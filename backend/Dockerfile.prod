@@ -1,0 +1,92 @@
+# Multi-stage build for production optimization
+FROM python:3.11-slim as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN pip install poetry
+
+# Set working directory
+WORKDIR /app
+
+# Copy poetry files
+COPY pyproject.toml poetry.lock ./
+
+# Configure poetry and create wheel packages
+RUN poetry config virtualenvs.create false \
+    && poetry build
+
+# Production stage
+FROM python:3.11-slim
+
+# Install system dependencies including OpenSCAD
+RUN apt-get update && apt-get install -y \
+    openscad \
+    curl \
+    dumb-init \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy wheel from builder stage and install
+COPY --from=builder /app/dist/*.whl /tmp/
+RUN pip install --no-cache-dir /tmp/*.whl \
+    && rm -rf /tmp/*.whl
+
+# Install production dependencies
+RUN pip install --no-cache-dir \
+    gunicorn==21.2.0 \
+    redis==5.0.1 \
+    celery==5.3.4
+
+# Set working directory
+WORKDIR /app
+
+# Copy application code
+COPY . .
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/temp /app/data /app/static /app/logs \
+    && chmod 755 /app/temp /app/data /app/static /app/logs
+
+# Collect static files
+ENV DJANGO_SETTINGS_MODULE=coin_maker.settings
+RUN python manage.py collectstatic --noinput --clear
+
+# Verify OpenSCAD is installed
+RUN openscad --version
+
+# Create non-root user for security
+RUN groupadd -r app && useradd -r -g app -d /app -s /bin/bash app \
+    && chown -R app:app /app
+
+# Switch to non-root user
+USER app
+
+# Expose port
+EXPOSE 8000
+
+# Health check with improved configuration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health/ || exit 1
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Use gunicorn for production with optimized settings
+CMD ["gunicorn", \
+    "--bind", "0.0.0.0:8000", \
+    "--workers", "3", \
+    "--worker-class", "sync", \
+    "--worker-connections", "1000", \
+    "--max-requests", "1000", \
+    "--max-requests-jitter", "100", \
+    "--timeout", "120", \
+    "--keep-alive", "5", \
+    "--preload", \
+    "--access-logfile", "/app/logs/access.log", \
+    "--error-logfile", "/app/logs/error.log", \
+    "--capture-output", \
+    "coin_maker.wsgi:application"]

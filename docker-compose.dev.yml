@@ -1,0 +1,76 @@
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./temp:/app/temp
+    env_file:
+      - config/backend.dev.env
+    depends_on:
+      - redis
+    command: python manage.py runserver 0.0.0.0:8000
+
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${VITE_DEV_SERVER_PORT:-5173}:${VITE_DEV_SERVER_PORT:-5173}"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - config/frontend.dev.env
+    command: pnpm run dev -- --host ${VITE_DEV_SERVER_HOST:-0.0.0.0} --port ${VITE_DEV_SERVER_PORT:-5173}
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --save 300 100
+
+  celery:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    volumes:
+      - ./backend:/app
+      - ./temp:/app/temp
+    env_file:
+      - config/backend.dev.env
+    depends_on:
+      - redis
+      - backend
+    command: celery -A coin_maker worker --loglevel=debug
+
+  celery-beat:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    volumes:
+      - ./backend:/app
+      - ./temp:/app/temp
+    env_file:
+      - config/backend.dev.env
+    depends_on:
+      - redis
+      - backend
+    command: celery -A coin_maker beat --loglevel=debug --schedule=/app/temp/celerybeat-schedule
+
+volumes:
+  redis_data:
