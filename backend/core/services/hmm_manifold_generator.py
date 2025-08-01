@@ -282,7 +282,7 @@ class HMMManifoldGenerator(ISTLGenerator):
                     # Convert degrees to radians and rotate around Z axis
                     import math
                     rotation_radians = math.radians(rotation)
-                    rotated_relief = centered_relief.rotate([0, 0, 1], rotation_radians)
+                    rotated_relief = centered_relief.rotate([0, 0, rotation_radians])
                 else:
                     rotated_relief = centered_relief
 
