@@ -4,7 +4,7 @@ from typing import Protocol
 
 
 class UploadedFile(Protocol):
-    """Protocol for Django uploaded files."""
+    """Protocol for uploaded files."""
     def chunks(self) -> list[bytes]:
         """Return file chunks."""
         ...

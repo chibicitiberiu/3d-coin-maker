@@ -1,16 +1,18 @@
 import time
 from pathlib import Path
 
-from django.conf import settings
-
 from core.interfaces.storage import IFileStorage, UploadedFile
+
+# Import settings
+from fastapi_settings import settings
 
 
 class FileSystemStorage(IFileStorage):
     """File system implementation of IFileStorage."""
 
     def __init__(self):
-        self._temp_dir = Path(settings.TEMP_DIR)
+        temp_dir_path = settings.temp_dir
+        self._temp_dir = Path(temp_dir_path)
         self._temp_dir.mkdir(parents=True, exist_ok=True)
 
     @property
@@ -25,8 +27,21 @@ class FileSystemStorage(IFileStorage):
 
         file_path = generation_dir / filename
         with open(file_path, 'wb') as f:
-            for chunk in file_data.chunks():
-                f.write(chunk)
+            # Handle both Django-style (chunks()) and FastAPI-style (file.file) file objects
+            if hasattr(file_data, 'chunks'):
+                # Django-style UploadedFile
+                for chunk in file_data.chunks():
+                    f.write(chunk)
+            elif hasattr(file_data, 'file') and hasattr(file_data.file, 'read'):
+                # FastAPI UploadFile - has a .file attribute with file-like interface
+                file_data.file.seek(0)  # Ensure we're at the beginning
+                while True:
+                    chunk = file_data.file.read(8192)  # Read in 8KB chunks
+                    if not chunk:
+                        break
+                    f.write(chunk)
+            else:
+                raise ValueError(f"Unsupported file object type: {type(file_data)}")
 
         return file_path
 

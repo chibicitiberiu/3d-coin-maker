@@ -15,7 +15,7 @@ A staged development plan for building a self-hostable web application that gene
 - ✅ Heightmap positioning controls (scale, offset, rotation)
 - ✅ Three-tab interface (Original, Preprocessed, Final Result)
 - ✅ STL viewer with Three.js and custom STL parser
-- ✅ Django REST Framework backend with proper API endpoints
+- ✅ FastAPI backend with proper API endpoints
 - ✅ Celery task queue for background processing
 - ✅ OpenSCAD integration for STL generation
 - ✅ File storage and cleanup system
@@ -43,7 +43,7 @@ A staged development plan for building a self-hostable web application that gene
 
 ## Technology Stack
 
-- **Backend**: Django + Django REST Framework
+- **Backend**: FastAPI
 - **Frontend**: SvelteKit + TypeScript
 - **Client-side Image Processing**: Photon WASM (primary), ImageMagick via WASM (fallback)
 - **3D Generation**: OpenSCAD (command-line)

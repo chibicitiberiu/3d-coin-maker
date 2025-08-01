@@ -184,7 +184,8 @@ def cleanup_old_files_task_func(
         RetryableError: For transient errors that should be retried
     """
     try:
-        from django.conf import settings
+        # Import settings
+        from fastapi_settings import settings
 
         from core.containers.application import container
 
@@ -201,7 +202,7 @@ def cleanup_old_files_task_func(
         if progress_callback:
             progress_callback.update(50, 'cleaning_files')
 
-        deleted_count = file_storage.cleanup_old_files(settings.FILE_RETENTION)
+        deleted_count = file_storage.cleanup_old_files(settings.file_max_age_minutes * 60)
 
         if progress_callback:
             progress_callback.update(100, 'cleanup_completed')

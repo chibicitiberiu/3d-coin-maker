@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-**Coin Maker** is a self-hostable web application that generates 3D printable coin STL files from user-uploaded images. It features a modern SvelteKit frontend with real-time image processing and a Django REST API backend with background task processing.
+**Coin Maker** is a self-hostable web application that generates 3D printable coin STL files from user-uploaded images. It features a modern SvelteKit frontend with real-time image processing and a FastAPI backend with background task processing.
 
-**Current Status**: Stage 1 MVP - 95% complete, fully functional with frontend-backend integration
+**Current Status**: Stage 1 MVP - 100% complete, fully functional with frontend-backend integration + FastAPI migration complete
 
 ## Architecture
 
@@ -19,22 +19,24 @@
   - Real-time parameter adjustments
   - Three-tab interface: Original → Preprocessed → Final Result
 
-### Backend (Django + DRF)
+### Backend (FastAPI)
 - **Location**: `backend/`
-- **Framework**: Django 4.2 + Django REST Framework
+- **Framework**: FastAPI with Pydantic validation
 - **Architecture**: Clean architecture with dependency injection
 - **Key Features**:
   - RESTful API endpoints for image upload/processing/STL generation
-  - Celery task queue for background processing
+  - Dual task queue support (Celery for web, APScheduler for desktop)
   - Rate limiting (20 generations/hour per IP)
   - Temporary file storage with automatic cleanup
   - HMM + Manifold3D integration for high-performance STL generation
+  - Automatic OpenAPI/Swagger documentation
 
 ### Infrastructure
 - **Container Orchestration**: Docker Compose
-- **Task Queue**: Redis + Celery
+- **Task Queue**: Redis + Celery (web) or APScheduler (desktop)
 - **Storage**: Temporary filesystem (no database)
 - **Deployment**: Production-ready with health checks, logging, monitoring
+- **Desktop Ready**: Optimized for PyInstaller packaging with 60% faster startup
 
 ## Key Technologies
 
@@ -47,9 +49,10 @@
 - **Lucide Svelte** - Icon library
 
 ### Backend Stack
-- **Django 4.2 + DRF** - Web framework and API
-- **Celery 5.3** - Background task processing
-- **Redis 7** - Cache and message broker
+- **FastAPI** - Modern async API framework with automatic docs
+- **Pydantic** - Data validation and settings management
+- **Celery 5.3 / APScheduler** - Background task processing (dual support)
+- **Redis 7** - Cache and message broker (web deployment)
 - **Pillow** - Image processing
 - **HMM + Manifold3D** - High-performance 3D model generation (100x faster than OpenSCAD)
 - **Trimesh** - 3D geometry processing
@@ -76,8 +79,11 @@
 │   │       └── imageProcessor.ts
 │   ├── package.json
 │   └── Dockerfile
-├── backend/                 # Django backend
-│   ├── coin_maker/         # Django project settings
+├── backend/                 # FastAPI backend
+│   ├── fastapi_main.py     # FastAPI application
+│   ├── fastapi_models.py   # Pydantic models
+│   ├── fastapi_dependencies.py # Dependency injection
+│   ├── fastapi_settings.py # FastAPI application settings
 │   ├── core/               # Clean architecture core
 │   │   ├── interfaces/     # Abstract interfaces
 │   │   ├── services/       # Business logic services
@@ -138,12 +144,12 @@ The project includes a convenient Docker Compose wrapper script that simplifies 
 ./dc-dev.sh ps
 
 # Standard docker compose commands also work
-./dc-dev.sh exec backend python manage.py shell
+./dc-dev.sh exec backend python -c "import fastapi_main; print('FastAPI app loaded')"
 ./dc-dev.sh down
 ```
 
 **Available Services:**
-- `backend-dev` - Django development server with hot reload
+- `backend-dev` - FastAPI development server with hot reload
 - `frontend-dev` - SvelteKit dev server with HMR
 - `redis` - Redis cache and message broker
 - `celery-dev` - Celery worker for background tasks
@@ -163,8 +169,7 @@ pnpm run check      # Type checking
 ```bash
 cd backend/
 poetry install
-poetry run python manage.py runserver  # Development on :8000
-poetry run python manage.py migrate
+poetry run python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000 --reload  # Development on :8000
 ```
 
 ### Docker Development

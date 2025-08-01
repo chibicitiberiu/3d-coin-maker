@@ -1,16 +1,13 @@
 [tool.poetry]
 name = "coin-maker-backend"
 version = "0.1.0"
-description = "Django backend for 3D Coin Maker - 3D printable coin generator"
+description = "FastAPI backend for 3D Coin Maker - 3D printable coin generator"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
-Django = "^4.2.7"
-djangorestframework = "^3.14.0"
-django-cors-headers = "^4.3.1"
 Pillow = "^10.1.0"
 celery = "^5.3.4"
 redis = "^5.0.1"
@@ -20,6 +17,10 @@ numpy = "^1.24.0"
 manifold3d = "^3.2.0"
 trimesh = "^4.0.0"
 apscheduler = "^3.11.0"
+fastapi = "^0.116.1"
+uvicorn = "^0.35.0"
+python-multipart = "^0.0.20"
+pydantic-settings = "^2.5.2"
 
 [tool.poetry.group.dev.dependencies]
 gunicorn = "^21.2.0"
@@ -27,6 +28,7 @@ pyright = "^1.1.300"
 ruff = "^0.1.0"
 pytest = "^7.4.0"
 requests = "^2.31.0"
+httpx = "^0.28.1"
 
 [build-system]
 requires = ["poetry-core"]

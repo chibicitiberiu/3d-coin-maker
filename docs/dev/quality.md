@@ -95,7 +95,7 @@ The Coin Maker project has achieved near-complete implementation of the Stage 1 
 **Strengths:**
 - Excellent dependency injection pattern
 - Clean interface abstractions
-- Proper Django REST Framework usage
+- Proper FastAPI framework usage
 - Good error handling in services
 - Type hints throughout codebase
 

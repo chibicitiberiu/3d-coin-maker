@@ -14,7 +14,7 @@ services:
       - ./temp:/app/temp
     env_file:
       - config/backend.dev.env
-    command: python manage.py runserver 0.0.0.0:8000
+    command: python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend-dev:
     build:
@@ -55,7 +55,7 @@ services:
     depends_on:
       - redis
       - backend
-    command: celery -A coin_maker worker --loglevel=debug
+    command: celery -A celery_app worker --loglevel=debug
     profiles:
       - celery
 
@@ -75,7 +75,7 @@ services:
     depends_on:
       - redis
       - backend
-    command: celery -A coin_maker beat --loglevel=debug --schedule=/app/temp/celerybeat-schedule
+    command: celery -A celery_app beat --loglevel=debug --schedule=/app/temp/celerybeat-schedule
     profiles:
       - celery
 

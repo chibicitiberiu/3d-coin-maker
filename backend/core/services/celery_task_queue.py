@@ -27,16 +27,18 @@ class CeleryTaskQueue(TaskQueue):
     implementation.
     """
 
-    # Map simple task names to full Celery task names for consistency with APScheduler
+    # Map simple task names to Celery task names from celery_app
     TASK_NAME_MAPPING = {
-        'process_image_task': 'apps.processing.tasks.process_image_task',
-        'generate_stl_task': 'apps.processing.tasks.generate_stl_task',
-        'cleanup_old_files_task': 'apps.processing.tasks.cleanup_old_files_task',
+        'process_image_task': 'process_image_task',
+        'generate_stl_task': 'generate_stl_task',
+        'cleanup_old_files_task': 'cleanup_old_files_task',
     }
 
     def __init__(self):
         """Initialize the Celery task queue."""
-        self.app = current_app
+        # Import the specific Celery app instance instead of using current_app
+        from celery_app import app
+        self.app = app
         logger.info("Initialized Celery task queue")
 
     def enqueue(
@@ -67,7 +69,7 @@ class CeleryTaskQueue(TaskQueue):
             # Map simple task name to full Celery task name
             celery_task_name = self.TASK_NAME_MAPPING.get(task_name, task_name)
             print(f"DEBUG: Mapping {task_name} -> {celery_task_name}")
-            
+
             # Get the task by name
             task = self.app.tasks.get(celery_task_name)
             print(f"DEBUG: Found task: {task}")
@@ -113,7 +115,7 @@ class CeleryTaskQueue(TaskQueue):
 
             celery_status = result.status
             task_status = status_mapping.get(celery_status, TaskStatus.PENDING)
-            
+
 
             # Get result data
             task_result = None

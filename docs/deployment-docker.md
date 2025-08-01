@@ -123,7 +123,7 @@ services:
       - config/frontend.env
     restart: unless-stopped
 
-  # Django backend
+  # FastAPI backend
   backend:
     build:
       context: ./backend
@@ -273,7 +273,7 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
-        # Django static files
+        # FastAPI static files (if needed)
         location /static/ {
             alias /var/www/static/;
             expires 1y;
@@ -335,8 +335,8 @@ chmod 644 ssl/fullchain.pem
 
 | Variable | Development | Production | Description |
 |----------|-------------|------------|-------------|
-| `DEBUG` | 1 | 0 | Django debug mode |
-| `SECRET_KEY` | dev-key | **CHANGE!** | Django secret key |
+| `DEBUG` | 1 | 0 | FastAPI debug mode |
+| `SECRET_KEY` | dev-key | **CHANGE!** | FastAPI secret key |
 | `ALLOWED_HOSTS` | localhost,127.0.0.1 | yourdomain.com | Allowed hosts |
 | `LOG_LEVEL` | DEBUG | INFO | Logging level |
 | `CORS_ALLOW_ALL_ORIGINS` | 1 | 0 | CORS policy |
@@ -380,13 +380,8 @@ DEBUG = False
 SECRET_KEY = os.getenv('SECRET_KEY')
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
-# Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/app/data/db.sqlite3',
-    }
-}
+# FastAPI doesn't use traditional databases by default
+# Application uses temporary file storage instead
 
 # Static files
 STATIC_ROOT = '/app/static/'
@@ -475,8 +470,7 @@ COPY . .
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
+# No static file collection needed for FastAPI
 
 EXPOSE 8000
 

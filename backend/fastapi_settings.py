@@ -1,0 +1,113 @@
+"""
+FastAPI Settings Configuration
+
+Replaces Django settings with Pydantic-based configuration management
+for the Coin Maker application.
+"""
+
+from pathlib import Path
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings using Pydantic."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"
+    )
+
+    # Basic application settings
+    debug: bool = Field(default=True, description="Enable debug mode")
+    secret_key: str = Field(default="your-secret-key-change-in-production", description="Secret key for security")
+
+    # Server settings
+    host: str = Field(default="127.0.0.1", description="Server host")
+    port: int = Field(default=8001, description="Server port")
+
+    # CORS settings
+    cors_origins: list[str] = Field(
+        default=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+        description="Allowed CORS origins"
+    )
+
+    # File storage settings
+    temp_dir: str = Field(default="/tmp/coin_maker", description="Temporary file storage directory")
+    max_file_size_mb: int = Field(default=50, description="Maximum upload file size in MB")
+    file_cleanup_interval_minutes: int = Field(default=5, description="File cleanup interval in minutes")
+    file_max_age_minutes: int = Field(default=30, description="Maximum age of temporary files in minutes")
+
+    # Rate limiting settings
+    max_generations_per_hour: int = Field(default=20, description="Maximum generations per IP per hour")
+    rate_limit_window_hours: int = Field(default=1, description="Rate limit window in hours")
+
+    # Task queue settings
+    use_celery: bool = Field(default=True, description="Use Celery for task queue (False for APScheduler)")
+    redis_url: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
+    celery_broker_url: str | None = Field(default=None, description="Celery broker URL (defaults to redis_url)")
+    celery_result_backend: str | None = Field(default=None, description="Celery result backend URL (defaults to redis_url)")
+
+    # Background task settings
+    max_task_retries: int = Field(default=3, description="Maximum task retry attempts")
+    task_retry_delay_seconds: int = Field(default=60, description="Delay between task retries in seconds")
+
+    # OpenSCAD settings (legacy, may be removed)
+    openscad_timeout_seconds: int = Field(default=300, description="OpenSCAD operation timeout")
+    openscad_path: str = Field(default="openscad", description="Path to OpenSCAD binary")
+
+    # HMM settings
+    hmm_timeout_seconds: int = Field(default=60, description="HMM operation timeout")
+
+    def __init__(self, **kwargs):
+        """Initialize settings with environment-specific defaults."""
+        super().__init__(**kwargs)
+
+        # Set Celery URLs if not specified
+        if self.celery_broker_url is None:
+            self.celery_broker_url = self.redis_url
+        if self.celery_result_backend is None:
+            self.celery_result_backend = self.redis_url
+
+    @property
+    def temp_path(self) -> Path:
+        """Get temp directory as Path object."""
+        return Path(self.temp_dir)
+
+    @property
+    def max_file_size_bytes(self) -> int:
+        """Get max file size in bytes."""
+        return self.max_file_size_mb * 1024 * 1024
+
+    @property
+    def is_desktop_mode(self) -> bool:
+        """Check if running in desktop mode (APScheduler instead of Celery)."""
+        return not self.use_celery
+
+
+# Global settings instance
+settings = Settings()
+
+
+# Helper functions for backward compatibility
+def get_temp_dir() -> Path:
+    """Get temporary directory path."""
+    return settings.temp_path
+
+
+def is_debug() -> bool:
+    """Check if debug mode is enabled."""
+    return settings.debug
+
+
+def get_secret_key() -> str:
+    """Get secret key."""
+    return settings.secret_key

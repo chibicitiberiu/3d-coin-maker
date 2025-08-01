@@ -6,7 +6,7 @@ from typing import Any
 
 import manifold3d as m3d
 import trimesh
-from django.conf import settings
+from fastapi_settings import settings
 from PIL import Image
 
 from core.interfaces.stl_generator import ISTLGenerator
@@ -17,7 +17,7 @@ class HMMManifoldGenerator(ISTLGenerator):
 
     def __init__(self):
         self.hmm_binary = 'hmm'
-        self.timeout = settings.HMM_TIMEOUT
+        self.timeout = settings.hmm_timeout_seconds
 
     def generate_stl(
         self,

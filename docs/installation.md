@@ -140,7 +140,7 @@ cp ../config/backend.env.example ../config/backend.env
 nano ../config/backend.env
 
 # Test backend installation
-poetry run python manage.py runserver
+poetry run python -m uvicorn fastapi_main:app --host 127.0.0.1 --port 8000
 ```
 
 ### 3. Frontend Setup
@@ -198,16 +198,16 @@ Choose the appropriate startup method based on your selected mode:
 redis-server
 ```
 
-**Terminal 2: Django Backend**
+**Terminal 2: FastAPI Backend**
 ```bash
 cd backend/
-poetry run python manage.py runserver 0.0.0.0:8000
+poetry run python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **Terminal 3: Celery Worker**
 ```bash
 cd backend/
-poetry run celery -A coin_maker worker -l info
+poetry run celery -A celery_app worker -l info
 ```
 
 **Terminal 4: Frontend (Development)**
@@ -218,10 +218,10 @@ pnpm run dev
 
 #### APScheduler Mode Startup
 
-**Terminal 1: Django Backend (with integrated task processing)**
+**Terminal 1: FastAPI Backend (with integrated task processing)**
 ```bash
 cd backend/
-poetry run python manage.py runserver 0.0.0.0:8000
+poetry run python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000
 ```
 
 **Terminal 2: Frontend (Development)**
@@ -230,7 +230,7 @@ cd frontend/
 pnpm run dev
 ```
 
-**Note**: In APScheduler mode, background tasks run within the Django process, so no separate Redis or Celery worker is needed.
+**Note**: In APScheduler mode, background tasks run within the FastAPI process, so no separate Redis or Celery worker is needed.
 
 ## Environment Configuration
 
@@ -341,9 +341,8 @@ Type=exec
 User=www-data
 Group=www-data
 WorkingDirectory=/path/to/3d-coin-maker/backend
-Environment=DJANGO_SETTINGS_MODULE=coin_maker.settings
 EnvironmentFile=/path/to/3d-coin-maker/config/backend.env
-ExecStart=/path/to/poetry run gunicorn coin_maker.wsgi:application --bind 0.0.0.0:8000
+ExecStart=/path/to/poetry run gunicorn fastapi_main:app --bind 0.0.0.0:8000 --worker-class uvicorn.workers.UvicornWorker
 Restart=always
 RestartSec=10
 
@@ -363,9 +362,8 @@ Type=exec
 User=www-data
 Group=www-data
 WorkingDirectory=/path/to/3d-coin-maker/backend
-Environment=DJANGO_SETTINGS_MODULE=coin_maker.settings
 EnvironmentFile=/path/to/3d-coin-maker/config/backend.env
-ExecStart=/path/to/poetry run celery -A coin_maker worker -l info
+ExecStart=/path/to/poetry run celery -A celery_app worker -l info
 Restart=always
 RestartSec=10
 
@@ -465,7 +463,7 @@ redis-cli ping
 
 # Test Celery worker
 cd backend/
-poetry run celery -A coin_maker inspect active
+poetry run celery -A celery_app inspect active
 ```
 
 **Verify Task Processing Mode:**
@@ -486,7 +484,7 @@ redis-cli ping | grep -q PONG || echo "Redis unhealthy"
 
 # Celery health
 cd backend/
-poetry run celery -A coin_maker inspect ping
+poetry run celery -A celery_app inspect ping
 ```
 
 ## Troubleshooting
@@ -543,7 +541,7 @@ sudo kill -9 <PID>
 poetry run gunicorn coin_maker.wsgi:application --workers 4 --bind 0.0.0.0:8000
 
 # Optimize Celery
-poetry run celery -A coin_maker worker -l info --concurrency=4
+poetry run celery -A celery_app worker -l info --concurrency=4
 ```
 
 **Redis Optimization**

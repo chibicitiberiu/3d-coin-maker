@@ -37,8 +37,8 @@
 - **UI**: PicoCSS framework with responsive two-panel layout
 - **State Management**: Svelte stores with reactive updates
 
-### Backend (Django + DRF)
-- **Framework**: Django 4.2 + Django REST Framework
+### Backend (FastAPI)
+- **Framework**: FastAPI with Pydantic validation
 - **Architecture**: Clean architecture with dependency injection
 - **Task Processing**: Unified task queue abstraction (Celery + Redis for production, APScheduler for development)
 - **3D Engine**: HMM + Manifold3D for high-performance mesh generation
@@ -106,7 +106,6 @@ See [docs/installation.md](docs/installation.md) for detailed manual setup instr
 ```bash
 cd backend/
 poetry install
-poetry run python manage.py migrate
 ```
 
 ### Frontend Setup
@@ -150,11 +149,11 @@ redis-server
 
 # Terminal 2: Backend
 cd backend/
-poetry run python manage.py runserver
+poetry run python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000 --reload
 
 # Terminal 3: Celery
 cd backend/
-poetry run celery -A coin_maker worker -l info
+poetry run celery -A celery_app worker -l info
 
 # Terminal 4: Frontend
 cd frontend/
@@ -223,15 +222,15 @@ PUBLIC_APP_NAME=3D Coin Maker
 │   │   └── static/          # Static assets
 │   ├── Dockerfile
 │   └── package.json
-├── backend/                 # Django backend application
-│   ├── coin_maker/         # Django project configuration
+├── backend/                 # FastAPI backend application
+│   ├── fastapi_main.py     # FastAPI application entry point
+│   ├── fastapi_models.py   # Pydantic models
+│   ├── fastapi_settings.py # Application settings
+│   ├── celery_app.py       # Celery task definitions
 │   ├── core/               # Clean architecture core
 │   │   ├── interfaces/     # Abstract interfaces
 │   │   ├── services/       # Business logic implementation
 │   │   └── containers/     # Dependency injection
-│   ├── apps/
-│   │   ├── api/           # REST API endpoints
-│   │   └── processing/    # Background task definitions
 │   ├── Dockerfile.prod
 │   └── pyproject.toml
 ├── config/                 # Environment configuration files

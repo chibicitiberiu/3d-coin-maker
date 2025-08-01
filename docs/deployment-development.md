@@ -6,7 +6,7 @@ This guide covers setting up 3D Coin Maker for development with hot reloading, d
 
 The development environment provides:
 
-- **Hot Reloading**: Code changes automatically restart the Django dev server and Vite frontend
+- **Hot Reloading**: Code changes automatically restart the FastAPI dev server and Vite frontend
 - **Debug Logging**: Detailed logging output for troubleshooting task processing and API calls
 - **Relaxed Rate Limits**: Higher generation limits for testing (100/hour vs 20/hour in production)
 - **Both Task Modes**: Easy switching between Celery and APScheduler implementations
@@ -21,18 +21,18 @@ The development environment provides:
 - **Persistence**: Task state persisted in Redis, survives application restarts
 - **Scaling**: Multi-process, can scale horizontally across multiple servers
 - **Monitoring**: Rich ecosystem of monitoring tools (Flower, Celery Beat, etc.)
-- **Container Count**: 4+ containers (Django, frontend, Redis, Celery workers)
-- **Services**: Django backend, SvelteKit frontend, Redis, Celery worker
+- **Container Count**: 4+ containers (FastAPI, frontend, Redis, Celery workers)
+- **Services**: FastAPI backend, SvelteKit frontend, Redis, Celery worker
 - **Command**: `./dc-dev.sh run`
 
 ### APScheduler Mode (Simplified Architecture)
 - **Task Processing**: In-process scheduler using Python's `concurrent.futures.ThreadPoolExecutor`
-- **Dependencies**: None - all processing happens within the Django application process
+- **Dependencies**: None - all processing happens within the FastAPI application process
 - **Persistence**: Task state stored in memory (non-persistent across restarts)
 - **Scaling**: Single-process, multi-threaded (vertical scaling only)
-- **Monitoring**: Standard Django logging, simpler debugging
-- **Container Count**: 2 containers (Django with integrated scheduler, frontend)
-- **Services**: Django backend, SvelteKit frontend (no Redis/Celery needed)
+- **Monitoring**: Standard FastAPI logging, simpler debugging
+- **Container Count**: 2 containers (FastAPI with integrated scheduler, frontend)
+- **Services**: FastAPI backend, SvelteKit frontend (no Redis/Celery needed)
 - **Command**: `./dc-dev.sh --mode apscheduler run`
 
 ### Key Differences Summary
@@ -135,8 +135,7 @@ The `dc-dev.sh` script provides convenient shortcuts for development:
 ./dc-dev.sh down
 
 # Execute commands in containers
-./dc-dev.sh exec backend python manage.py shell
-./dc-dev.sh exec backend python manage.py migrate
+./dc-dev.sh exec backend python
 ```
 
 ## Task Queue Modes
@@ -189,13 +188,13 @@ curl http://localhost:8000/api/health/ | jq '.services.task_queue.stats.queue_ty
 ### Available Services
 
 **Celery Mode Services:**
-- **`backend-dev`**: Django development server with auto-reload
+- **`backend-dev`**: FastAPI development server with auto-reload
 - **`frontend-dev`**: SvelteKit dev server with HMR
 - **`redis`**: Redis cache and message broker
 - **`celery-dev`**: Celery worker with auto-reload
 
 **APScheduler Mode Services:**
-- **`backend-dev`**: Django with APScheduler (no external dependencies)
+- **`backend-dev`**: FastAPI with APScheduler (no external dependencies)
 - **`frontend-dev`**: SvelteKit dev server with HMR
 
 ## Development Docker Compose
@@ -220,11 +219,10 @@ services:
     env_file:
       - config/backend.env
     environment:
-      - DJANGO_SETTINGS_MODULE=coin_maker.settings
       - PYTHONPATH=/app
     depends_on:
       - redis
-    command: python manage.py runserver 0.0.0.0:8000
+    command: python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
 
   # Frontend development server
@@ -254,11 +252,10 @@ services:
     env_file:
       - config/backend.env
     environment:
-      - DJANGO_SETTINGS_MODULE=coin_maker.settings
       - PYTHONPATH=/app
     depends_on:
       - redis
-    command: celery -A coin_maker worker -l debug --reload
+    command: celery -A celery_app worker -l debug --reload
     restart: unless-stopped
 
   # Redis for caching and message broker
@@ -293,14 +290,13 @@ poetry install
 # Copy development environment
 cp ../config/backend.dev.env ../config/backend.env
 
-# Run migrations
-poetry run python manage.py migrate
+# No migrations needed for FastAPI
 
 # Start development server
-poetry run python manage.py runserver
+poetry run python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000 --reload
 
 # In another terminal: Start Celery worker
-poetry run celery -A coin_maker worker -l debug
+poetry run celery -A celery_app worker -l debug
 ```
 
 ### Frontend Development
@@ -396,8 +392,8 @@ VITE_HMR=1
 ### Code Changes Workflow
 
 ```bash
-# Backend changes (Python/Django)
-# Changes are automatically reloaded by Django dev server
+# Backend changes (Python/FastAPI)
+# Changes are automatically reloaded by FastAPI dev server
 # If you change dependencies:
 ./dc-dev.sh restart backend-dev
 
@@ -414,16 +410,12 @@ cd frontend/ && pnpm install
 ### Application Management
 
 ```bash
-# Access Django shell for debugging
-./dc-dev.sh exec backend-dev python manage.py shell
-
-# Check Django configuration
-./dc-dev.sh exec backend-dev python manage.py check
+# Access Python shell for debugging
+./dc-dev.sh exec backend-dev python
 
 # Or manually:
 cd backend/
-poetry run python manage.py shell
-poetry run python manage.py check
+poetry run python
 ```
 
 ### Testing Workflow
@@ -449,18 +441,17 @@ pnpm run check
 #### Backend Debugging
 
 ```bash
-# View Django logs
+# View FastAPI logs
 ./dc-dev.sh logs -f backend-dev
 
-# Access Django shell
-./dc-dev.sh exec backend-dev python manage.py shell
+# Access Python shell
+./dc-dev.sh exec backend-dev python
 
 # Check Celery tasks
-./dc-dev.sh exec backend-dev python manage.py shell
+./dc-dev.sh exec backend-dev python
 # In shell:
-from apps.processing.tasks import *
-from celery import current_app
-print(current_app.control.inspect().active())
+from celery_app import app
+print(app.control.inspect().active())
 ```
 
 #### Frontend Debugging
@@ -535,16 +526,12 @@ Create `.vscode/launch.json`:
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Django Debug",
+      "name": "FastAPI Debug",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/backend/manage.py",
-      "args": ["runserver", "--noreload"],
-      "django": true,
-      "cwd": "${workspaceFolder}/backend",
-      "env": {
-        "DJANGO_SETTINGS_MODULE": "coin_maker.settings"
-      }
+      "module": "uvicorn",
+      "args": ["fastapi_main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+      "cwd": "${workspaceFolder}/backend"
     }
   ]
 }
@@ -554,10 +541,9 @@ Create `.vscode/launch.json`:
 
 1. **Open Project**: Open the `backend/` directory as the project root
 2. **Python Interpreter**: Set to Poetry virtual environment
-3. **Django Support**: Enable Django support in settings
-   - Django project root: `backend/`
-   - Settings: `coin_maker/settings.py`
-   - Manage script: `manage.py`
+3. **FastAPI Support**: Configure for FastAPI development
+   - Project root: `backend/`
+   - Main module: `fastapi_main.py`
 
 ## Performance Optimization for Development
 
@@ -596,7 +582,7 @@ export default defineConfig({
 
 ```bash
 # Use auto-reload only for changed files
-# Already configured in Django dev server
+# Already configured in FastAPI dev server
 
 # Optimize Celery for development
 # Add to settings:

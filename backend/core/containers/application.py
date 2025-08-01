@@ -2,7 +2,6 @@ import os
 
 import redis
 from dependency_injector import containers, providers
-from django.conf import settings
 
 from core.services.apscheduler_task_queue import APSchedulerTaskQueue
 from core.services.celery_task_queue import CeleryTaskQueue
@@ -11,6 +10,9 @@ from core.services.file_storage import FileSystemStorage
 from core.services.hmm_manifold_generator import HMMManifoldGenerator
 from core.services.image_processor import PILImageProcessor
 from core.services.redis_rate_limiter import RedisRateLimiter
+
+# Import settings
+from fastapi_settings import settings
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -22,7 +24,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # External resources
     redis_client = providers.Singleton(
         redis.from_url,
-        url=settings.CELERY_BROKER_URL
+        url=getattr(settings, 'redis_url', getattr(settings, 'CELERY_BROKER_URL', 'redis://localhost:6379/0'))
     )
 
     # Core services
@@ -46,7 +48,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # Task Queue - conditionally provide Celery or APScheduler based on environment
     task_queue = providers.Singleton(
-        CeleryTaskQueue if os.getenv('USE_CELERY', 'true').lower() in ('true', '1', 'yes', 'on')
+        CeleryTaskQueue if getattr(settings, 'use_celery', os.getenv('USE_CELERY', 'true').lower() in ('true', '1', 'yes', 'on'))
         else APSchedulerTaskQueue
     )
 
@@ -67,9 +69,11 @@ container = ApplicationContainer()
 def initialize_task_queue():
     """Initialize the task queue and register task functions if using APScheduler."""
     # Only initialize APScheduler if we're not using Celery
-    if os.getenv('USE_CELERY', 'true').lower() not in ('true', '1', 'yes', 'on'):
+    use_celery = getattr(settings, 'use_celery', os.getenv('USE_CELERY', 'true').lower() in ('true', '1', 'yes', 'on'))
+
+    if not use_celery:
         task_queue = container.task_queue()
-        
+
         # For APScheduler, register the task functions and start
         if isinstance(task_queue, APSchedulerTaskQueue):
             from core.services.task_functions import TASK_FUNCTIONS
@@ -79,7 +83,7 @@ def initialize_task_queue():
 
             # Start the scheduler
             task_queue.start()
-        
+
         return task_queue
     else:
         # For Celery mode, don't instantiate the task queue during startup

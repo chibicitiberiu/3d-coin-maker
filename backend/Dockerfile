@@ -70,5 +70,5 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Default command for development
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Default command for development (FastAPI)
+CMD ["python", "-m", "uvicorn", "fastapi_main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

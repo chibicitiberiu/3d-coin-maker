@@ -1,9 +1,11 @@
 import time
 
 import redis
-from django.conf import settings
 
 from core.interfaces.rate_limiter import IRateLimiter
+
+# Import settings
+from fastapi_settings import settings
 
 
 class RedisRateLimiter(IRateLimiter):
@@ -11,21 +13,19 @@ class RedisRateLimiter(IRateLimiter):
 
     def __init__(self, redis_client: redis.Redis | None = None):
         if redis_client is None:
-            redis_url = settings.CELERY_BROKER_URL
+            redis_url = settings.redis_url
             self.redis_client = redis.from_url(redis_url)
         else:
             self.redis_client = redis_client
 
     def is_allowed(self, ip_address: str, operation_type: str) -> bool:
         """Check if operation is allowed for the IP address."""
-        # Check if rate limiting is enabled
-        if not getattr(settings, 'RATE_LIMITING_ENABLED', True):
-            return True
+        # Rate limiting always enabled in FastAPI version
 
         # Get limits from settings
         if operation_type == 'generation':
-            hourly_limit = settings.MAX_GENERATIONS_PER_HOUR
-            concurrent_limit = settings.MAX_CONCURRENT_PER_IP
+            hourly_limit = settings.max_generations_per_hour
+            concurrent_limit = 10  # Fixed concurrent limit
         else:
             # Default limits for other operations
             hourly_limit = 100
@@ -43,12 +43,10 @@ class RedisRateLimiter(IRateLimiter):
 
     def record_operation(self, ip_address: str, operation_type: str) -> None:
         """Record an operation for rate limiting."""
-        # Skip recording if rate limiting is disabled
-        if not getattr(settings, 'RATE_LIMITING_ENABLED', True):
-            return
+        # Rate limiting always enabled in FastAPI version
 
         current_time = int(time.time())
-        prefix = getattr(settings, 'RATE_LIMIT_REDIS_PREFIX', 'rate_limit')
+        prefix = 'rate_limit'
 
         # Record for hourly limit
         hourly_key = f"{prefix}:hourly:{ip_address}:{operation_type}"
@@ -65,7 +63,7 @@ class RedisRateLimiter(IRateLimiter):
     def get_remaining_quota(self, ip_address: str, operation_type: str) -> int:
         """Get remaining quota for IP address and operation type."""
         if operation_type == 'generation':
-            hourly_limit = settings.MAX_GENERATIONS_PER_HOUR
+            hourly_limit = settings.max_generations_per_hour
         else:
             hourly_limit = 100
 
