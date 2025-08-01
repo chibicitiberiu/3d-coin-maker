@@ -1,11 +1,28 @@
 FROM python:3.11-slim
 
-# Install system dependencies including OpenSCAD
+# Install system dependencies including OpenSCAD, hmm, and manifold3d requirements
 RUN apt-get update && apt-get install -y \
     openscad \
     curl \
     git \
+    wget \
+    build-essential \
+    pkg-config \
+    libpython3-dev \
+    python3-distutils \
+    libglm-dev \
+    make \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
+
+# Build and install hmm (heightmap meshing utility) from source
+RUN cd /tmp && \
+    git clone https://github.com/fogleman/hmm.git && \
+    cd hmm && \
+    make && \
+    cp hmm /usr/local/bin/ && \
+    cd / && \
+    rm -rf /tmp/hmm
 
 # Install Poetry
 RUN pip install poetry

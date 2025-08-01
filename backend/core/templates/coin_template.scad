@@ -3,12 +3,12 @@
 
 $VARIABLES$
 
-// Set resolution for good performance/quality balance
-$fn = resolution;
+// Use reasonable global resolution
+$fn = 32;
 
 module coin_shape_2d() {
     if (shape == "circle") {
-        circle(d=diameter, $fn=128);  // High resolution for smooth circle edges
+        circle(d=diameter, $fn=64);  // Reasonable resolution for smooth edges
     } else if (shape == "square") {
         square([diameter, diameter], center=true);
     } else if (shape == "hexagon") {
@@ -16,7 +16,7 @@ module coin_shape_2d() {
     } else if (shape == "octagon") {
         circle(d=diameter, $fn=8);
     } else {
-        circle(d=diameter, $fn=128);  // High resolution for default case too
+        circle(d=diameter, $fn=64);  // Reasonable resolution for default case too
     }
 }
 

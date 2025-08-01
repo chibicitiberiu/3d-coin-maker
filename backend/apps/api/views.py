@@ -1,6 +1,7 @@
 
 import time
 from pathlib import Path
+from typing import Any, cast
 
 from celery.result import AsyncResult
 from dependency_injector.wiring import Provide, inject
@@ -9,8 +10,6 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
 from rest_framework.response import Response
-
-from typing import Any, cast
 
 from apps.processing.tasks import generate_stl_task, process_image_task
 from core.containers.application import ApplicationContainer
@@ -137,11 +136,17 @@ def generation_status(
                 task_result = AsyncResult(task_id)
                 task_status = task_result.status
                 task_info = task_result.info or {}
-                
+
                 # Handle case where task_info is not a dict (e.g., exception info)
                 if not isinstance(task_info, dict):
-                    task_info = {'error': str(task_info)} if task_info else {}
-                    
+                    # If task_info is an exception, extract the actual error message
+                    if hasattr(task_info, 'args') and task_info.args:
+                        # Get the actual error message from the exception
+                        error_msg = str(task_info.args[0]) if task_info.args else str(task_info)
+                    else:
+                        error_msg = str(task_info) if task_info else 'Unknown error'
+                    task_info = {'error': error_msg}
+
             except Exception as e:
                 task_status = 'FAILURE'
                 task_info = {'error': f'Error retrieving task status: {str(e)}'}
@@ -153,17 +158,18 @@ def generation_status(
         has_original = coin_service.get_file_path(generation_id, 'original') is not None
         has_processed = coin_service.get_file_path(generation_id, 'processed') is not None
         has_heightmap = coin_service.get_file_path(generation_id, 'heightmap') is not None
-        
+
         stl_path = coin_service.get_file_path(generation_id, 'stl')
         has_stl = stl_path is not None and stl_path.exists()
-        
+
         # Get STL file timestamp for cache busting
         stl_timestamp = None
-        if has_stl:
+        if has_stl and stl_path is not None:
             try:
                 import time
                 stl_timestamp = int(stl_path.stat().st_mtime * 1000)  # milliseconds timestamp
-            except:
+            except (OSError, AttributeError):
+                import time
                 stl_timestamp = int(time.time() * 1000)
 
         response_data = {
@@ -206,19 +212,19 @@ def download_stl(
         open(stl_path, 'rb'),
         content_type='application/octet-stream'
     )
-    
+
     # Get timestamp parameter for cache busting (if provided by frontend)
     timestamp = request.GET.get('t', '')
     filename = f"coin_{generation_id}_{timestamp}.stl" if timestamp else f"coin_{generation_id}.stl"
-    
+
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    
+
     # Add aggressive cache-busting headers
     response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
     response['Pragma'] = 'no-cache'
     response['Expires'] = '0'
     response['ETag'] = f'"{generation_id}-{timestamp}"'
-    
+
     return response
 
 
@@ -247,12 +253,12 @@ def preview_image(
         open(image_path, 'rb'),
         content_type='image/png'
     )
-    
+
     # Add cache-busting headers to prevent browser caching
     response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response['Pragma'] = 'no-cache'
     response['Expires'] = '0'
-    
+
     return response
 
 

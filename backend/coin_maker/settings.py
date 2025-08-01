@@ -152,7 +152,7 @@ if not CORS_ALLOW_ALL_ORIGINS:
     else:
         CORS_ALLOWED_ORIGINS = [
             "http://localhost:5173",
-            "http://127.0.0.1:5173", 
+            "http://127.0.0.1:5173",
             "http://localhost:3000",
             "http://127.0.0.1:3000",
         ]
@@ -171,9 +171,15 @@ MAX_GENERATIONS_PER_HOUR = config('MAX_GENERATIONS_PER_HOUR', default=20, cast=i
 MAX_CONCURRENT_PER_IP = config('MAX_CONCURRENT_PER_IP', default=5, cast=int)
 RATE_LIMIT_REDIS_PREFIX = config('RATE_LIMIT_REDIS_PREFIX', default='rate_limit')
 
-# OpenSCAD Settings
+# Mesh Generation Settings
+MESH_GENERATOR = config('MESH_GENERATOR', default='hmm_manifold')  # 'openscad' or 'hmm_manifold'
+
+# OpenSCAD Settings (used when MESH_GENERATOR='openscad')
 OPENSCAD_TIMEOUT = config('OPENSCAD_TIMEOUT', default=120, cast=int)
 OPENSCAD_BINARY = config('OPENSCAD_BINARY', default='openscad')
+
+# HMM Settings (used when MESH_GENERATOR='hmm_manifold')
+HMM_TIMEOUT = config('HMM_TIMEOUT', default=120, cast=int)
 
 # Cleanup Settings
 CLEANUP_INTERVAL = config('CLEANUP_INTERVAL', default=300, cast=int)
@@ -192,7 +198,7 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=True, cast=bool)
     SECURE_FRAME_DENY = config('SECURE_FRAME_DENY', default=True, cast=bool)
     SECURE_REFERRER_POLICY = config('SECURE_REFERRER_POLICY', default='strict-origin-when-cross-origin')
-    
+
     # Additional storage and performance settings
     MAX_STORAGE_SIZE = config('MAX_STORAGE_SIZE', default=1073741824, cast=int)  # 1GB
     USE_REDIS_CACHE = config('USE_REDIS_CACHE', default=True, cast=bool)

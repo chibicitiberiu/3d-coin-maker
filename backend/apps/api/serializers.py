@@ -78,6 +78,6 @@ class GenerationStatusSerializer(serializers.Serializer):
     has_processed = serializers.BooleanField()
     has_heightmap = serializers.BooleanField()
     has_stl = serializers.BooleanField()
-    
+
     # Cache busting timestamp for STL file
     stl_timestamp = serializers.IntegerField(required=False, allow_null=True)

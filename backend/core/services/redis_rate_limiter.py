@@ -1,5 +1,4 @@
 import time
-from typing import Union
 
 import redis
 from django.conf import settings
@@ -22,7 +21,7 @@ class RedisRateLimiter(IRateLimiter):
         # Check if rate limiting is enabled
         if not getattr(settings, 'RATE_LIMITING_ENABLED', True):
             return True
-            
+
         # Get limits from settings
         if operation_type == 'generation':
             hourly_limit = settings.MAX_GENERATIONS_PER_HOUR
@@ -47,7 +46,7 @@ class RedisRateLimiter(IRateLimiter):
         # Skip recording if rate limiting is disabled
         if not getattr(settings, 'RATE_LIMITING_ENABLED', True):
             return
-            
+
         current_time = int(time.time())
         prefix = getattr(settings, 'RATE_LIMIT_REDIS_PREFIX', 'rate_limit')
 
@@ -79,7 +78,7 @@ class RedisRateLimiter(IRateLimiter):
             current_hour_start,
             int(time.time())
         )
-        current_count = int(count_result) if isinstance(count_result, (int, str)) else 0
+        current_count = int(count_result) if isinstance(count_result, int | str) else 0
 
         return max(0, hourly_limit - current_count)
 
@@ -93,7 +92,7 @@ class RedisRateLimiter(IRateLimiter):
 
         # Count current operations
         card_result = self.redis_client.zcard(hourly_key)
-        current_count = int(card_result) if isinstance(card_result, (int, str)) else 0
+        current_count = int(card_result) if isinstance(card_result, int | str) else 0
 
         return current_count < limit
 
@@ -101,6 +100,6 @@ class RedisRateLimiter(IRateLimiter):
         """Check if IP is within concurrent limit."""
         concurrent_key = f"rate_limit:concurrent:{ip_address}:{operation_type}"
         scard_result = self.redis_client.scard(concurrent_key)
-        current_count = int(scard_result) if isinstance(scard_result, (int, str)) else 0
+        current_count = int(scard_result) if isinstance(scard_result, int | str) else 0
 
         return current_count < limit

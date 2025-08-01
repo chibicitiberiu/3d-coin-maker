@@ -12,8 +12,12 @@ class ISTLGenerator(ABC):
         heightmap_path: Path,
         coin_parameters: dict[str, Any],
         output_path: Path
-    ) -> bool:
-        """Generate STL file from heightmap and coin parameters."""
+    ) -> tuple[bool, str | None]:
+        """Generate STL file from heightmap and coin parameters.
+
+        Returns:
+            tuple[bool, str | None]: (success, error_message)
+        """
         pass
 
     @abstractmethod

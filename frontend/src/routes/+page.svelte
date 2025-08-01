@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Upload, Settings, Eye, Download, Loader2, Image } from 'lucide-svelte';
+	import { Upload, Settings, Eye, Download, Loader2, Image, AlertTriangle } from 'lucide-svelte';
 	import { processImage, imageDataToBlob, type ImageProcessingParams } from '$lib/imageProcessor';
 	import { browser } from '$app/environment';
 	import { onDestroy } from 'svelte';
@@ -31,6 +31,9 @@
 	let currentTaskId: string | null = null;
 	let processingTaskId: string | null = null;
 	let generationTaskId: string | null = null;
+	
+	// Error state management
+	let stlGenerationError: string | null = null;
 
 	// Client-side processing state
 	let processedImageData: ImageData | null = null;
@@ -203,7 +206,7 @@
 					console.error('updatePreview: Image failed to load', error);
 					reject(new Error('Image failed to load'));
 				};
-				imageElement.src = uploadedImageUrl;
+				imageElement.src = uploadedImageUrl!;
 			});
 			
 			const params: ImageProcessingParams = {
@@ -520,9 +523,6 @@
 	function drawProcessedImage(ctx: CanvasRenderingContext2D, worldCenterX: number, worldCenterY: number) {
 		if (!processedImageData) return;
 		
-		// Calculate image size and position in world coordinates
-		const imageSize = coinSize * (heightmapScale / 100) * pixelsPerMM;
-		
 		// Create temporary canvas for the processed image
 		const tempCanvas = document.createElement('canvas');
 		tempCanvas.width = processedImageData.width;
@@ -533,16 +533,32 @@
 		// Put processed image data on temporary canvas
 		tempCtx.putImageData(processedImageData, 0, 0);
 		
-		// Save context for rotation
+		// Apply same scaling logic as backend:
+		// 1. Scale image so width = coin size (base scale)
+		const imageWidth = processedImageData.width;
+		const imageHeight = processedImageData.height;
+		const baseScaleFactor = coinSize / imageWidth;
+		
+		// 2. Apply user scale percentage
+		const finalScaleFactor = baseScaleFactor * (heightmapScale / 100);
+		
+		// 3. Calculate final image dimensions in world coordinates
+		const finalImageWidth = imageWidth * finalScaleFactor * pixelsPerMM;
+		const finalImageHeight = imageHeight * finalScaleFactor * pixelsPerMM;
+		
+		// Save context for transformations
 		ctx.save();
-		// Translate to world position (0,0 + offsets as percentage of coin size)
+		
+		// 4. Apply offset (as percentage of coin size)
 		const offsetXPixels = (offsetX / 100) * coinSize * pixelsPerMM;
 		const offsetYPixels = (offsetY / 100) * coinSize * pixelsPerMM;
 		ctx.translate(offsetXPixels, offsetYPixels);
+		
+		// 5. Apply rotation
 		ctx.rotate((rotation * Math.PI) / 180);
 		
-		// Draw the processed image centered at world origin with offsets
-		ctx.drawImage(tempCanvas, -imageSize / 2, -imageSize / 2, imageSize, imageSize);
+		// 6. Draw the processed image with correct dimensions, centered at origin
+		ctx.drawImage(tempCanvas, -finalImageWidth / 2, -finalImageHeight / 2, finalImageWidth, finalImageHeight);
 		
 		// Restore context
 		ctx.restore();
@@ -645,18 +661,22 @@
 		
 		isGenerating = true;
 		
+		// Clear any previous state to start fresh
+		stlGenerationError = null;
+		generatedSTLUrl = null;
+		generationId = null; // Force creation of new generation ID
+
 		try {
-			// First, upload the processed image to the backend
-			if (!generationId) {
-				// Create a File object from the processed image blob
-				const processedFile = new File([processedImageBlob], 'processed_image.png', {
-					type: 'image/png'
-				});
-				
-				// Upload the processed image
-				const uploadResult = await api.uploadImage(processedFile);
-				generationId = uploadResult.generation_id;
-			}
+			// Always create a new generation for each STL generation
+			// Create a File object from the processed image blob
+			const processedFile = new File([processedImageBlob], 'processed_image.png', {
+				type: 'image/png'
+			});
+			
+			// Upload the processed image (this will create a new generation_id)
+			const uploadResult = await api.uploadImage(processedFile);
+			generationId = uploadResult.generation_id;
+			console.log('Created new generation ID:', generationId);
 			
 			const coinParams: CoinParameters = {
 				shape: coinShape,
@@ -672,6 +692,10 @@
 			// Start STL generation
 			const generateResult = await api.generateSTL(generationId, coinParams);
 			generationTaskId = generateResult.task_id;
+			console.log('STL generation started:', {
+				generationId,
+				taskId: generateResult.task_id
+			});
 			
 			// Poll for completion
 			const finalStatus = await pollTaskCompletion(generateResult.task_id, 'generation');
@@ -680,40 +704,57 @@
 			const timestamp = finalStatus?.stl_timestamp;
 			generatedSTLUrl = api.getSTLDownloadUrl(generationId, timestamp);
 			
-			// Switch to result tab
-			activeTab = 'result';
-			
 		} catch (error) {
 			console.error('Error generating STL:', error);
-			alert('Error generating STL: ' + (error instanceof Error ? error.message : 'Unknown error'));
+			// Store the exact error message from backend without generic wrapping
+			stlGenerationError = error instanceof Error ? error.message : String(error);
+			console.log('Setting stlGenerationError to:', stlGenerationError);
 		} finally {
 			isGenerating = false;
+			// Always switch to result tab, whether success or failure
+			activeTab = 'result';
 		}
 	}
 
 	// Poll for task completion
 	async function pollTaskCompletion(taskId: string, taskType: string): Promise<any> {
-		const maxAttempts = 60; // 5 minutes with 5s intervals
+		const maxAttempts = 120; // 2 minutes with 1s intervals
 		let attempts = 0;
 		
 		while (attempts < maxAttempts) {
 			try {
 				const status = await api.getGenerationStatus(generationId!, taskId);
+				console.log(`Poll attempt ${attempts + 1}:`, {
+					generationId: generationId!,
+					taskId,
+					status: status.status,
+					error: status.error
+				});
 				
 				if (status.status === 'SUCCESS') {
+					console.log('Task completed successfully');
 					return status;
 				} else if (status.status === 'FAILURE') {
-					throw new Error(status.error || `${taskType} failed`);
+					console.log('Task failed, throwing error:', status.error);
+					// Create a custom error that preserves the backend error message
+					const backendError = new Error(status.error || `${taskType} failed`);
+					backendError.name = 'BackendError';
+					throw backendError;
 				}
 				
-				// Wait 5 seconds before next poll
-				await new Promise(resolve => setTimeout(resolve, 5000));
+				// Wait 1 second before next poll (STL generation is fast now)
+				await new Promise(resolve => setTimeout(resolve, 1000));
 				attempts++;
 			} catch (error) {
+				// If this is a backend error (FAILURE status), don't retry - propagate immediately
+				if (error instanceof Error && error.name === 'BackendError') {
+					throw error;
+				}
+				// For other errors (network issues, API errors), retry until max attempts
 				if (attempts === maxAttempts - 1) {
 					throw error;
 				}
-				await new Promise(resolve => setTimeout(resolve, 5000));
+				await new Promise(resolve => setTimeout(resolve, 1000));
 				attempts++;
 			}
 		}
@@ -877,6 +918,8 @@
 		<div 
 			class="controls-content"
 			class:drag-over={isDragOver}
+			role="application"
+			aria-label="File drop zone"
 			on:drop={(e) => { handleDrop(e); isDragOver = false; }}
 			on:dragover={handleDragOver}
 			on:dragleave={handleDragLeave}
@@ -915,11 +958,18 @@
 		</section>
 
 		<section class="image-processing">
-			<h3 class="collapsible-header" on:click={() => imageProcessingExpanded = !imageProcessingExpanded}>
+			<button 
+				type="button"
+				class="collapsible-header" 
+				aria-expanded={imageProcessingExpanded}
+				aria-controls="image-processing-content"
+				on:click={() => imageProcessingExpanded = !imageProcessingExpanded}
+				on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); imageProcessingExpanded = !imageProcessingExpanded; } }}
+			>
 				<span class="collapse-icon" class:expanded={imageProcessingExpanded}>▶</span>
 				Image Processing
-			</h3>
-			{#if imageProcessingExpanded}
+			</button>
+			<div id="image-processing-content" class:hidden={!imageProcessingExpanded}>
 			
 			<div class="control-grid">
 				<label for="grayscale-method">Grayscale Method</label>
@@ -999,21 +1049,29 @@
 			</div>
 
 			<div class="control-grid">
-				<label>Invert Colors</label>
+				<label for="invert-colors">Invert Colors</label>
 				<input 
+					id="invert-colors"
 					type="checkbox" 
 					bind:checked={invertColors}
 				/>
 			</div>
-			{/if}
+			</div>
 		</section>
 
 		<section class="coin-parameters">
-			<h3 class="collapsible-header" on:click={() => coinParametersExpanded = !coinParametersExpanded}>
+			<button 
+				type="button"
+				class="collapsible-header" 
+				aria-expanded={coinParametersExpanded}
+				aria-controls="coin-parameters-content"
+				on:click={() => coinParametersExpanded = !coinParametersExpanded}
+				on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); coinParametersExpanded = !coinParametersExpanded; } }}
+			>
 				<span class="collapse-icon" class:expanded={coinParametersExpanded}>▶</span>
 				Coin Parameters
-			</h3>
-			{#if coinParametersExpanded}
+			</button>
+			<div id="coin-parameters-content" class:hidden={!coinParametersExpanded}>
 			
 			<div class="control-grid">
 				<label for="coin-shape">Shape</label>
@@ -1088,15 +1146,22 @@
 			<div class="control-note">
 				<small>Maximum height of raised/recessed areas</small>
 			</div>
-			{/if}
+			</div>
 		</section>
 
 		<section class="positioning">
-			<h3 class="collapsible-header" on:click={() => heightmapPositioningExpanded = !heightmapPositioningExpanded}>
+			<button 
+				type="button"
+				class="collapsible-header" 
+				aria-expanded={heightmapPositioningExpanded}
+				aria-controls="heightmap-positioning-content"
+				on:click={() => heightmapPositioningExpanded = !heightmapPositioningExpanded}
+				on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); heightmapPositioningExpanded = !heightmapPositioningExpanded; } }}
+			>
 				<span class="collapse-icon" class:expanded={heightmapPositioningExpanded}>▶</span>
 				Heightmap Positioning
-			</h3>
-			{#if heightmapPositioningExpanded}
+			</button>
+			<div id="heightmap-positioning-content" class:hidden={!heightmapPositioningExpanded}>
 			
 			<div class="control-grid">
 				<label for="heightmap-scale">Scale (%)</label>
@@ -1185,7 +1250,7 @@
 					/>
 				</div>
 			</div>
-			{/if}
+			</div>
 		</section>
 		</div>
 		<footer class="controls-footer">
@@ -1325,6 +1390,13 @@
 							<h3>Generating STL</h3>
 							<p>Creating your 3D coin model...</p>
 						</div>
+					{:else if stlGenerationError}
+						<div class="placeholder-content error-content">
+							<AlertTriangle size={48} class="error-icon" />
+							<h3>STL Generation Failed</h3>
+							<p class="error-message">{stlGenerationError}</p>
+							<small>Check the parameters and try again, or refresh the page if the issue persists</small>
+						</div>
 					{:else}
 						<div class="placeholder-content">
 							<Eye size={48} />
@@ -1396,35 +1468,7 @@
 		margin-bottom: 1rem;
 	}
 
-	.controls-panel h3 {
-		margin-bottom: 0.5rem;
-		font-size: 0.9rem;
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		color: var(--pico-color);
-		font-weight: 600;
-	}
 
-	.upload-area {
-		border: 2px dashed var(--pico-muted-border-color);
-		border-radius: var(--pico-border-radius);
-		padding: 1rem 0.5rem;
-		text-align: center;
-		background: var(--pico-background-color);
-		cursor: pointer;
-		transition: border-color 0.2s;
-		font-size: 0.85rem;
-	}
-
-	.upload-area:hover {
-		border-color: var(--pico-primary-500);
-	}
-
-	.upload-area.uploading {
-		border-color: var(--pico-primary-500);
-		background: var(--pico-primary-100);
-	}
 
 	.uploaded-image {
 		max-width: 100%;
@@ -1442,9 +1486,6 @@
 		to { transform: rotate(360deg); }
 	}
 
-	.control-group {
-		margin-bottom: 0.75rem;
-	}
 
 	.control-grid {
 		display: grid;
@@ -1498,10 +1539,6 @@
 		text-overflow: ellipsis;
 	}
 
-	.drop-zone-hint {
-		margin-top: 0.25rem;
-		text-align: center;
-	}
 
 	.control-note {
 		grid-column: 1 / -1;
@@ -1526,18 +1563,38 @@
 		background-color: var(--pico-primary-background);
 	}
 
+	/* Hidden content utility */
+	.hidden {
+		display: none;
+	}
+
 	/* Collapsible sections */
 	.collapsible-header {
+		background: none;
+		border: none;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: inherit;
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		gap: 0.375rem;
 		user-select: none;
 		transition: color 0.2s;
+		width: 100%;
+		text-align: left;
+		font-size: 1rem;
+		font-weight: 600;
 	}
 
 	.collapsible-header:hover {
 		color: var(--pico-primary);
+	}
+
+	.collapsible-header:focus {
+		outline: 2px solid var(--pico-primary);
+		outline-offset: 2px;
 	}
 
 	.collapse-icon {
@@ -1621,134 +1678,6 @@
 	}
 
 
-	.ruler-top {
-		top: 0;
-		left: 30px;
-		right: 0;
-		height: 30px;
-		border-bottom: 2px solid var(--pico-muted-border-color);
-	}
-
-	.ruler-left {
-		left: 0;
-		top: 30px;
-		bottom: 0;
-		width: 30px;
-		border-right: 2px solid var(--pico-muted-border-color);
-	}
-
-	.ruler-mark {
-		position: absolute;
-		pointer-events: none;
-	}
-
-	.ruler-top .ruler-mark {
-		top: 0;
-		height: 30px;
-		width: 1px;
-		background: var(--pico-muted-border-color);
-		transform: translateX(-0.5px);
-	}
-
-	.ruler-left .ruler-mark {
-		left: 0;
-		width: 30px;
-		height: 1px;
-		background: var(--pico-muted-border-color);
-		transform: translateY(-0.5px);
-	}
-
-	.ruler-mark.major {
-		background: var(--pico-color);
-	}
-
-	.ruler-top .ruler-mark.major {
-		height: 15px;
-	}
-
-	.ruler-left .ruler-mark.major {
-		width: 15px;
-	}
-
-	.ruler-top .ruler-mark.minor {
-		height: 8px;
-		bottom: 0;
-		top: auto;
-	}
-
-	.ruler-left .ruler-mark.minor {
-		width: 8px;
-		right: 0;
-		left: auto;
-	}
-
-	.ruler-label {
-		position: absolute;
-		font-size: 9px;
-		color: var(--pico-color);
-		font-weight: 500;
-		white-space: nowrap;
-	}
-
-	.ruler-top .ruler-label {
-		top: 2px;
-		left: 2px;
-		transform: translateX(-50%);
-	}
-
-	.ruler-left .ruler-label.vertical {
-		left: 2px;
-		top: 2px;
-		transform: translateY(-50%) rotate(-90deg);
-		transform-origin: left center;
-	}
-
-	/* Center origin axes */
-	.origin-axes {
-		position: absolute;
-		top: 30px;
-		left: 30px;
-		right: 0;
-		bottom: 0;
-		pointer-events: none;
-		z-index: 3;
-	}
-
-	.axis-x {
-		position: absolute;
-		top: 50%;
-		left: 0;
-		right: 0;
-		height: 2px;
-		background: rgba(255, 0, 0, 0.6);
-		transform: translateY(-1px);
-	}
-
-	.axis-y {
-		position: absolute;
-		left: 50%;
-		top: 0;
-		bottom: 0;
-		width: 2px;
-		background: rgba(0, 255, 0, 0.6);
-		transform: translateX(-1px);
-	}
-
-	/* Grid overlay */
-	.grid-overlay {
-		position: absolute;
-		top: 30px;
-		left: 30px;
-		right: 0;
-		bottom: 0;
-		pointer-events: none;
-		z-index: 1;
-		background-image: 
-			linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
-			linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
-		background-size: calc(var(--pixels-per-mm) * 10px) calc(var(--pixels-per-mm) * 10px); /* 10mm grid */
-		background-position: 50% 50%; /* Center the grid */
-	}
 
 	.prepared-canvas {
 		position: relative;
@@ -1760,48 +1689,6 @@
 		margin-top: 30px;
 	}
 
-	.coin-overlay {
-		position: absolute;
-		border: 3px solid var(--pico-primary);
-		background: rgba(var(--pico-primary-rgb, 0,100,200), 0.1);
-		z-index: 3;
-		pointer-events: none;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		box-shadow: 0 0 0 1px rgba(255,255,255,0.8);
-	}
-
-	.coin-circle {
-		border-radius: 50%;
-	}
-
-	.coin-square {
-		border-radius: 0;
-	}
-
-	.coin-hexagon {
-		border-radius: 0;
-		clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-	}
-
-	.coin-octagon {
-		border-radius: 0;
-		clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
-	}
-
-	.coin-info {
-		position: absolute;
-		bottom: 10px;
-		right: 10px;
-		background: rgba(255, 255, 255, 0.9);
-		padding: 0.25rem 0.5rem;
-		border-radius: var(--pico-border-radius);
-		border: 1px solid var(--pico-muted-border-color);
-		font-size: 10pt;
-		color: var(--pico-color);
-		z-index: 4;
-	}
 
 	.control-grid label {
 		display: block;
@@ -1812,10 +1699,6 @@
 		padding-top: 0.25rem;
 	}
 
-	.control-group input[type="range"] {
-		width: 100%;
-		margin-bottom: 0.25rem;
-	}
 
 	.number-input {
 		width: 60px;
@@ -1826,80 +1709,8 @@
 		margin-top: 0.25rem;
 	}
 
-	.checkbox-label {
-		display: flex !important;
-		align-items: center;
-		gap: 0.375rem;
-		cursor: pointer;
-		margin-bottom: 0 !important;
-		font-size: 0.8rem;
-		color: var(--pico-color);
-	}
 
-	.checkbox-label input[type="checkbox"] {
-		margin: 0;
-	}
 
-	.shape-options {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 0.5rem;
-		margin-top: 0.25rem;
-	}
-
-	.shape-option {
-		display: flex !important;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.25rem;
-		padding: 0.5rem;
-		border: 2px solid var(--pico-muted-border-color);
-		border-radius: var(--pico-border-radius);
-		cursor: pointer;
-		transition: all 0.2s;
-		margin-bottom: 0 !important;
-	}
-
-	.shape-option:hover {
-		border-color: var(--pico-primary-300);
-	}
-
-	.shape-option:has(input:checked) {
-		border-color: var(--pico-primary-500);
-		background: var(--pico-primary-100);
-	}
-
-	.shape-option input[type="radio"] {
-		margin: 0;
-	}
-
-	.shape-preview {
-		width: 24px;
-		height: 24px;
-		background: var(--pico-primary-500);
-	}
-
-	.shape-preview.circle {
-		border-radius: 50%;
-	}
-
-	.shape-preview.square {
-		border-radius: 0;
-	}
-
-	.shape-preview.hexagon {
-		clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-	}
-
-	.shape-preview.octagon {
-		clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
-	}
-
-	.shape-option span {
-		font-size: 0.75rem;
-		font-weight: 500;
-		color: var(--pico-color);
-	}
 
 	.rotation-control {
 		display: flex;
@@ -1936,12 +1747,6 @@
 		transition: transform 0.1s ease;
 	}
 
-	.control-group small {
-		display: block;
-		margin-top: 0.125rem;
-		color: var(--pico-muted-color);
-		font-size: 0.7rem;
-	}
 
 
 	.actions {
@@ -2060,6 +1865,37 @@
 		margin: 0.25rem 0;
 		font-size: 0.8rem;
 		color: var(--pico-muted-color);
+	}
+
+	/* Error state styling */
+	.error-content {
+		border: 1px solid #f56565;
+		background-color: #fed7d7;
+		border-radius: var(--pico-border-radius);
+		padding: 1rem;
+	}
+
+	.error-icon {
+		color: #f56565;
+		margin-bottom: 0.5rem;
+	}
+
+	.error-content h3 {
+		color: #c53030;
+		margin: 0.5rem 0 0.25rem;
+	}
+
+	.error-message {
+		color: #742a2a;
+		font-weight: 500;
+		margin: 0.5rem 0;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+
+	.error-content small {
+		color: #a0a0a0;
+		font-style: italic;
 	}
 
 	/* Mobile Responsiveness */

@@ -104,10 +104,11 @@ class CoinGenerationService:
             stl_filename = "coin.stl"
             stl_path = self.file_storage.temp_dir / generation_id / stl_filename
 
-            success = self.stl_generator.generate_stl(heightmap_path, coin_parameters, stl_path)
+            success, error_message = self.stl_generator.generate_stl(heightmap_path, coin_parameters, stl_path)
 
             if not success:
-                return False, "Failed to generate STL file."
+                # Return the specific error message from the STL generator
+                return False, error_message or "STL generation failed with unknown error"
 
             return True, None
 
