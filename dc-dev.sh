@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Docker Compose development wrapper script
-# Usage: ./dc-dev.sh <command> [args...]
+# Usage: ./dc-dev.sh [--mode=<celery|apscheduler>] <command> [args...]
 #
 # Special shortcuts:
 #   run     - build and up -d (with optional service names)
@@ -10,8 +10,37 @@
 #
 # All other commands are passed directly to docker compose
 
+# Default mode is celery
+MODE="celery"
 COMPOSE_FILE="docker-compose.dev.yml"
-DOCKER_COMPOSE="docker compose -f $COMPOSE_FILE"
+
+# Parse mode flag
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --mode=*)
+            MODE="${1#*=}"
+            shift
+            ;;
+        --mode)
+            MODE="$2"
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Set compose files based on mode
+if [ "$MODE" = "apscheduler" ]; then
+    DOCKER_COMPOSE="docker compose -f $COMPOSE_FILE -f docker-compose.dev.apscheduler.yml"
+    export USE_CELERY=false
+    MODE_DESC="APScheduler (Desktop Mode)"
+else
+    DOCKER_COMPOSE="docker compose -f $COMPOSE_FILE --profile celery"
+    export USE_CELERY=true
+    MODE_DESC="Celery + Redis (Web Mode)"
+fi
 
 # Colors for our output (different from Docker's typical colors)
 CYAN='\033[0;36m'
@@ -27,7 +56,11 @@ print_status() {
 show_usage() {
     echo "Docker Compose Development Wrapper"
     echo ""
-    echo "Usage: ./dc-dev.sh <command> [args...]"
+    echo "Usage: ./dc-dev.sh [--mode=<celery|apscheduler>] <command> [args...]"
+    echo ""
+    echo "Modes:"
+    echo "  --mode=celery      - Use Celery + Redis (default, full web stack)"
+    echo "  --mode=apscheduler - Use APScheduler (desktop mode, no Redis)"
     echo ""
     echo "Special shortcuts:"
     echo "  run [services...]     - Build and start services in detached mode"
@@ -38,12 +71,13 @@ show_usage() {
     echo "  up, down, build, logs, ps, exec, etc."
     echo ""
     echo "Examples:"
-    echo "  ./dc-dev.sh run                    # Build and start all services"
-    echo "  ./dc-dev.sh run backend frontend   # Build and start specific services"
-    echo "  ./dc-dev.sh restart backend        # Build and restart backend service"
-    echo "  ./dc-dev.sh recreate               # Full recreation of all services"
-    echo "  ./dc-dev.sh logs -f backend        # Follow backend logs"
-    echo "  ./dc-dev.sh ps                     # Show running services"
+    echo "  ./dc-dev.sh run                                # Celery mode: all services"
+    echo "  ./dc-dev.sh --mode=apscheduler run             # APScheduler mode: no Redis/Celery"
+    echo "  ./dc-dev.sh --mode=celery run backend frontend # Celery mode: specific services"
+    echo "  ./dc-dev.sh restart backend                    # Build and restart backend"
+    echo "  ./dc-dev.sh recreate                           # Full recreation"
+    echo "  ./dc-dev.sh logs -f backend                    # Follow backend logs"
+    echo "  ./dc-dev.sh ps                                 # Show running services"
 }
 
 # Check if no arguments provided
@@ -57,12 +91,18 @@ shift  # Remove first argument, rest will be passed as additional args
 
 case "$COMMAND" in
     "run")
+        print_status "Mode: $MODE_DESC"
         print_status "Building services..."
         $DOCKER_COMPOSE build
         if [ $? -eq 0 ]; then
             print_status "Starting services in detached mode..."
             echo "Backend will be available on http://localhost:8000"
             echo "Frontend will be available on http://localhost:5173"
+            if [ "$MODE" = "apscheduler" ]; then
+                echo "Task Queue: APScheduler (in-process)"
+            else
+                echo "Task Queue: Celery + Redis"
+            fi
             $DOCKER_COMPOSE up -d $@
         else
             print_status "Build failed, not starting services"
@@ -83,6 +123,7 @@ case "$COMMAND" in
         ;;
     
     "recreate")
+        print_status "Mode: $MODE_DESC"
         print_status "Stopping containers..."
         $DOCKER_COMPOSE stop
         print_status "Removing containers..."
@@ -93,6 +134,11 @@ case "$COMMAND" in
             print_status "Starting services in detached mode..."
             echo "Backend will be available on http://localhost:8000"
             echo "Frontend will be available on http://localhost:5173"
+            if [ "$MODE" = "apscheduler" ]; then
+                echo "Task Queue: APScheduler (in-process)"
+            else
+                echo "Task Queue: Celery + Redis"
+            fi
             $DOCKER_COMPOSE up -d $@
         else
             print_status "Build failed, not starting services"

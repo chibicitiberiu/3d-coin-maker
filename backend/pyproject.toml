@@ -19,6 +19,7 @@ dependency-injector = "^4.41.0"
 numpy = "^1.24.0"
 manifold3d = "^3.2.0"
 trimesh = "^4.0.0"
+apscheduler = "^3.11.0"
 
 [tool.poetry.group.dev.dependencies]
 gunicorn = "^21.2.0"

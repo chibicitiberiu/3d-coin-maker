@@ -3,7 +3,6 @@ import time
 from pathlib import Path
 from typing import Any, cast
 
-from celery.result import AsyncResult
 from dependency_injector.wiring import Provide, inject
 from django.http import FileResponse, Http404
 from rest_framework import status
@@ -11,8 +10,8 @@ from rest_framework.decorators import api_view
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from apps.processing.tasks import generate_stl_task, process_image_task
 from core.containers.application import ApplicationContainer
+from core.interfaces.task_queue import TaskQueue
 from core.services.coin_generation_service import CoinGenerationService
 
 from .serializers import (
@@ -72,7 +71,11 @@ def upload_image(
 
 
 @api_view(['POST'])
-def process_image(request: Request) -> Response:
+@inject
+def process_image(
+    request: Request,
+    task_queue: TaskQueue = Provide[ApplicationContainer.task_queue]
+) -> Response:
     """Process uploaded image with parameters."""
     serializer = ImageProcessingSerializer(data=request.data)
     if not serializer.is_valid():
@@ -84,19 +87,27 @@ def process_image(request: Request) -> Response:
     data = cast(dict[str, Any], validated_data)
     generation_id = str(data['generation_id'])
 
-    # Start background processing task
-    # type: ignore - Celery task function
-    task = process_image_task.delay(generation_id, data)  # type: ignore
+    # Start background processing task using the injected task queue
+    task_id = task_queue.enqueue(
+        task_name='process_image_task',
+        args=(generation_id, data),
+        max_retries=3,
+        retry_delay=60
+    )
 
     return Response({
-        'task_id': task.id,
+        'task_id': task_id,
         'generation_id': generation_id,
         'message': 'Image processing started'
     }, status=status.HTTP_202_ACCEPTED)
 
 
 @api_view(['POST'])
-def generate_stl(request: Request) -> Response:
+@inject
+def generate_stl(
+    request: Request,
+    task_queue: TaskQueue = Provide[ApplicationContainer.task_queue]
+) -> Response:
     """Generate STL file from processed image."""
     serializer = CoinParametersSerializer(data=request.data)
     if not serializer.is_valid():
@@ -108,11 +119,16 @@ def generate_stl(request: Request) -> Response:
     data = cast(dict[str, Any], validated_data)
     generation_id = str(data['generation_id'])
 
-    # Start background STL generation task
-    task = generate_stl_task.delay(generation_id, data)  # type: ignore
+    # Start background STL generation task using the injected task queue
+    task_id = task_queue.enqueue(
+        task_name='generate_stl_task',
+        args=(generation_id, data),
+        max_retries=3,
+        retry_delay=60
+    )
 
     return Response({
-        'task_id': task.id,
+        'task_id': task_id,
         'generation_id': generation_id,
         'message': 'STL generation started'
     }, status=status.HTTP_202_ACCEPTED)
@@ -123,7 +139,8 @@ def generate_stl(request: Request) -> Response:
 def generation_status(
     request: Request,
     generation_id: str,
-    coin_service: CoinGenerationService = Provide[ApplicationContainer.coin_generation_service]
+    coin_service: CoinGenerationService = Provide[ApplicationContainer.coin_generation_service],
+    task_queue: TaskQueue = Provide[ApplicationContainer.task_queue]
 ) -> Response:
     """Get status of generation process."""
     try:
@@ -131,21 +148,19 @@ def generation_status(
         task_id = request.GET.get('task_id')
 
         if task_id:
-            # Get task status
+            # Get task status using the task queue abstraction
             try:
-                task_result = AsyncResult(task_id)
-                task_status = task_result.status
-                task_info = task_result.info or {}
-
-                # Handle case where task_info is not a dict (e.g., exception info)
-                if not isinstance(task_info, dict):
-                    # If task_info is an exception, extract the actual error message
-                    if hasattr(task_info, 'args') and task_info.args:
-                        # Get the actual error message from the exception
-                        error_msg = str(task_info.args[0]) if task_info.args else str(task_info)
-                    else:
-                        error_msg = str(task_info) if task_info else 'Unknown error'
-                    task_info = {'error': error_msg}
+                task_result = task_queue.get_result(task_id)
+                if task_result:
+                    task_status = task_result.status.value  # Convert enum to string
+                    task_info = {
+                        'progress': task_result.progress.get('progress', 0) if task_result.progress else 0,
+                        'step': task_result.progress.get('step', 'unknown') if task_result.progress else 'unknown',
+                        'error': task_result.error
+                    }
+                else:
+                    task_status = 'UNKNOWN'
+                    task_info = {'error': 'Task not found'}
 
             except Exception as e:
                 task_status = 'FAILURE'
@@ -263,9 +278,12 @@ def preview_image(
 
 
 @api_view(['GET'])
-def health_check(request: Request) -> Response:
+@inject
+def health_check(
+    request: Request,
+    task_queue: TaskQueue = Provide[ApplicationContainer.task_queue]
+) -> Response:
     """Health check endpoint to verify system status."""
-    import subprocess
 
     from django.conf import settings
 
@@ -275,13 +293,29 @@ def health_check(request: Request) -> Response:
         'timestamp': time.time()
     }
 
-
-    # Check Redis connection
+    # Check Task Queue
     try:
-        from core.containers.application import container
-        redis_client = container.redis_client()
-        redis_client.ping()
-        status_info['services']['redis'] = {'status': 'connected'}
+        task_queue_health = task_queue.health_check()
+        status_info['services']['task_queue'] = task_queue_health
+        if task_queue_health['status'] != 'healthy':
+            status_info['status'] = 'degraded'
+    except Exception as e:
+        status_info['services']['task_queue'] = {
+            'status': 'error',
+            'error': str(e)
+        }
+        status_info['status'] = 'degraded'
+
+    # Check Redis connection (only if using Celery)
+    try:
+        import os
+        if os.getenv('USE_CELERY', 'true').lower() in ('true', '1', 'yes', 'on'):
+            from core.containers.application import container
+            redis_client = container.redis_client()
+            redis_client.ping()
+            status_info['services']['redis'] = {'status': 'connected'}
+        else:
+            status_info['services']['redis'] = {'status': 'skipped', 'reason': 'Using APScheduler'}
     except Exception as e:
         status_info['services']['redis'] = {
             'status': 'error',

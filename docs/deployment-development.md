@@ -1,6 +1,64 @@
-# Development Deployment Guide
+# Development Setup Guide
 
-This guide covers setting up 3D Coin Maker for development with hot reloading, debug logging, and convenient development workflows.
+This guide covers setting up 3D Coin Maker for development with hot reloading, debug logging, and testing both task processing architectures.
+
+## Development Environment Overview
+
+The development environment provides:
+
+- **Hot Reloading**: Code changes automatically restart the Django dev server and Vite frontend
+- **Debug Logging**: Detailed logging output for troubleshooting task processing and API calls
+- **Relaxed Rate Limits**: Higher generation limits for testing (100/hour vs 20/hour in production)
+- **Both Task Modes**: Easy switching between Celery and APScheduler implementations
+
+## Task Processing Architecture Comparison
+
+3D Coin Maker implements a unified task queue abstraction supporting two different background processing architectures:
+
+### Celery Mode (Production Architecture)
+- **Task Processing**: Distributed task queue with separate worker processes
+- **Dependencies**: Requires Redis (or other message broker) for task coordination
+- **Persistence**: Task state persisted in Redis, survives application restarts
+- **Scaling**: Multi-process, can scale horizontally across multiple servers
+- **Monitoring**: Rich ecosystem of monitoring tools (Flower, Celery Beat, etc.)
+- **Container Count**: 4+ containers (Django, frontend, Redis, Celery workers)
+- **Services**: Django backend, SvelteKit frontend, Redis, Celery worker
+- **Command**: `./dc-dev.sh run`
+
+### APScheduler Mode (Simplified Architecture)
+- **Task Processing**: In-process scheduler using Python's `concurrent.futures.ThreadPoolExecutor`
+- **Dependencies**: None - all processing happens within the Django application process
+- **Persistence**: Task state stored in memory (non-persistent across restarts)
+- **Scaling**: Single-process, multi-threaded (vertical scaling only)
+- **Monitoring**: Standard Django logging, simpler debugging
+- **Container Count**: 2 containers (Django with integrated scheduler, frontend)
+- **Services**: Django backend, SvelteKit frontend (no Redis/Celery needed)
+- **Command**: `./dc-dev.sh --mode apscheduler run`
+
+### Key Differences Summary
+
+| Feature | Celery Mode | APScheduler Mode |
+|---------|-------------|------------------|
+| Task Processing | Distributed (Redis + Workers) | In-process (Threads) |
+| External Dependencies | Redis server required | None |
+| Scalability | Horizontal scaling | Single instance |
+| Use Case | Multi-user web hosting | Single-user desktop |
+| Container Count | 4+ containers | 2 containers |
+| Task Persistence | Survives restarts | Lost on restart |
+| Debugging Complexity | Multiple log sources | Single log source |
+| Resource Requirements | Higher (Redis + workers) | Lower (single process) |
+
+The APScheduler mode is primarily intended for development and testing. It provides a simpler architecture for understanding task flow and debugging, and could potentially be used for future desktop application implementations.
+
+## Why Test Both Modes?
+
+**Testing both architectures ensures:**
+- Code changes work correctly with both task processing implementations
+- Task functions are properly abstracted from the underlying queue system
+- Progress callbacks and error handling work consistently
+- Performance characteristics are understood for both approaches
+
+---
 
 ## Prerequisites
 
@@ -24,11 +82,16 @@ cp config/frontend.dev.env config/frontend.env
 
 ### 2. Start Development Environment
 
+Choose your deployment mode for testing:
+
 ```bash
-# Start all services with automatic rebuilding
+# Start in Celery mode (default - for web deployment testing)
 ./dc-dev.sh run
 
-# Or start specific services
+# Start in APScheduler mode (for desktop deployment testing)
+./dc-dev.sh --mode apscheduler run
+
+# Or start specific services (Celery mode)
 ./dc-dev.sh run backend redis celery
 ./dc-dev.sh run frontend-dev
 ```
@@ -76,12 +139,64 @@ The `dc-dev.sh` script provides convenient shortcuts for development:
 ./dc-dev.sh exec backend python manage.py migrate
 ```
 
+## Task Queue Modes
+
+The development environment supports two task processing modes for testing different deployment scenarios:
+
+### Celery Mode (Default - Web Deployment)
+
+**Use Case**: Testing web deployment with distributed task processing
+**Services**: `backend`, `frontend-dev`, `redis`, `celery-dev`
+**Start Command**: `./dc-dev.sh run`
+
+```bash
+# Check health endpoint
+curl http://localhost:8000/api/health/ | jq '.services.task_queue.stats.queue_type'
+# Returns: "celery"
+
+# Services running
+./dc-dev.sh ps
+# Shows: backend, frontend-dev, redis, celery worker
+```
+
+### APScheduler Mode (Desktop Deployment)
+
+**Use Case**: Testing desktop deployment with in-process task processing
+**Services**: `backend`, `frontend-dev` (no Redis or Celery needed)
+**Start Command**: `./dc-dev.sh --mode apscheduler run`
+
+```bash
+# Check health endpoint
+curl http://localhost:8000/api/health/ | jq '.services.task_queue.stats.queue_type'
+# Returns: "apscheduler"
+
+# Services running
+./dc-dev.sh ps
+# Shows: backend, frontend-dev (no Redis/Celery containers)
+```
+
+### Switching Between Modes
+
+```bash
+# Stop current mode
+./dc-dev.sh down
+
+# Start in different mode
+./dc-dev.sh --mode celery run      # Web deployment mode
+./dc-dev.sh --mode apscheduler run # Desktop deployment mode
+```
+
 ### Available Services
 
+**Celery Mode Services:**
 - **`backend-dev`**: Django development server with auto-reload
 - **`frontend-dev`**: SvelteKit dev server with HMR
 - **`redis`**: Redis cache and message broker
 - **`celery-dev`**: Celery worker with auto-reload
+
+**APScheduler Mode Services:**
+- **`backend-dev`**: Django with APScheduler (no external dependencies)
+- **`frontend-dev`**: SvelteKit dev server with HMR
 
 ## Development Docker Compose
 

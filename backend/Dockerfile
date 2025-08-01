@@ -52,12 +52,17 @@ COPY . .
 ARG UID=1000
 ARG GID=1000
 
+# Accept USE_CELERY as build argument (default to true for development)
+ARG USE_CELERY=true
+
 # Create a non-root user with matching UID/GID
 RUN groupadd -g $GID appuser && useradd -u $UID -g $GID -m appuser
 
 # Create temp directory with proper permissions
 RUN mkdir -p temp && chmod 755 temp && chown -R appuser:appuser /app
 
+# Set USE_CELERY environment variable from build argument
+ENV USE_CELERY=${USE_CELERY}
 
 # Switch to non-root user
 USER appuser

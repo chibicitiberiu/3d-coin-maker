@@ -63,7 +63,7 @@ class HMMManifoldGenerator(ISTLGenerator):
             # Step 2: Create coin shape primitives using Manifold
             if progress_callback:
                 progress_callback(80, 'coin_shape_generation')
-                
+
             base_height = thickness - relief_depth
             if base_height <= 0:
                 error_msg = f"Invalid coin parameters: base height {base_height}mm (thickness: {thickness}mm, relief: {relief_depth}mm). Relief depth must be less than thickness."
@@ -74,7 +74,7 @@ class HMMManifoldGenerator(ISTLGenerator):
             # Step 3: Boolean operations using Manifold
             if progress_callback:
                 progress_callback(85, 'mesh_combination')
-                
+
             final_mesh = self._combine_relief_with_base(
                 relief_mesh, base_coin, shape, diameter, relief_depth, base_height
             )
@@ -87,7 +87,7 @@ class HMMManifoldGenerator(ISTLGenerator):
             # Export final mesh to STL
             if progress_callback:
                 progress_callback(90, 'stl_export')
-                
+
             mesh_data = final_mesh.to_mesh()
 
             # Convert Manifold3D mesh to trimesh and export
@@ -99,10 +99,10 @@ class HMMManifoldGenerator(ISTLGenerator):
             output_trimesh = trimesh.Trimesh(vertices=vertices, faces=faces)
             output_trimesh.export(str(output_path))
             print(f"Successfully exported STL to {output_path}")
-            
+
             if progress_callback:
                 progress_callback(95, 'stl_export_complete')
-                
+
             return True, None
 
         except Exception as e:
@@ -170,7 +170,7 @@ class HMMManifoldGenerator(ISTLGenerator):
             # Preprocess heightmap if transformations are needed
             if progress_callback:
                 progress_callback(25, 'heightmap_preprocessing')
-                
+
             processed_heightmap = self._preprocess_heightmap(
                 heightmap_path, scale_percent, offset_x_percent,
                 offset_y_percent, rotation, coin_diameter
@@ -209,7 +209,7 @@ class HMMManifoldGenerator(ISTLGenerator):
                 print(f"Running HMM: {' '.join(cmd)}")
                 if progress_callback:
                     progress_callback(30, 'hmm_mesh_generation')
-                    
+
                 result = subprocess.run(
                     cmd,
                     capture_output=True,
@@ -226,7 +226,7 @@ class HMMManifoldGenerator(ISTLGenerator):
                 # Load the generated STL into Manifold using trimesh
                 if progress_callback:
                     progress_callback(60, 'mesh_loading')
-                    
+
                 relief_manifold = self._load_stl_to_manifold(temp_stl_path)
 
                 if relief_manifold is None:
@@ -253,7 +253,7 @@ class HMMManifoldGenerator(ISTLGenerator):
                 # Transform relief mesh according to user parameters
                 if progress_callback:
                     progress_callback(70, 'mesh_transformation')
-                    
+
                 # Step 1: Scale relief so its width equals coin size
                 relief_bounds = relief_manifold.bounding_box()
                 relief_width = relief_bounds[3] - relief_bounds[0]  # max_x - min_x
@@ -594,8 +594,8 @@ class HMMManifoldGenerator(ISTLGenerator):
                 return None
 
             # Step 3: Create Manifold mesh from raw data using the correct API
-            # Create a Mesh object first, then pass it to Manifold constructor
-            mesh = m3d.Mesh(vert_properties=vertices, tri_verts=faces)
+            # Both vert_properties and tri_verts are required constructor parameters
+            mesh = m3d.Mesh(vert_properties=vertices, tri_verts=faces)  # type: ignore[call-arg]
             relief_manifold = m3d.Manifold(mesh)
 
             print(f"Loaded STL with {len(vertices)} vertices and {len(faces)} faces")

@@ -2,19 +2,14 @@ from typing import Any
 
 from celery import shared_task
 
-
-class ProcessingError(Exception):
-    """Custom exception for processing errors that should not be retried."""
-    def __init__(self, message: str):
-        self.message = message
-        super().__init__(message)
-
-
-class RetryableError(Exception):
-    """Custom exception for errors that should trigger a retry."""
-    def __init__(self, message: str):
-        self.message = message
-        super().__init__(message)
+from core.interfaces.task_queue import ProgressCallback
+from core.services.task_functions import (
+    ProcessingError,
+    RetryableError,
+    cleanup_old_files_task_func,
+    generate_stl_task_func,
+    process_image_task_func,
+)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
@@ -24,50 +19,45 @@ def process_image_task(
     parameters: dict[str, Any]
 ):
     """Celery task for processing uploaded images."""
+
+    # Create a progress callback that updates Celery task state
+    def celery_progress_callback(progress: int, step: str, extra_data: dict | None = None):
+        self.update_state(
+            state='PROCESSING',
+            meta={'step': step, 'progress': progress, **(extra_data or {})}
+        )
+
+    # Create progress callback wrapper
+    progress_callback = ProgressCallback(
+        task_id=self.request.id,
+        update_func=lambda task_id, status, progress_data: celery_progress_callback(
+            progress_data.get('progress', 0),
+            progress_data.get('step', 'processing'),
+            progress_data
+        )
+    )
+
     try:
-        # Import container inside task to avoid circular imports
-        from core.containers.application import container
-        coin_service = container.coin_generation_service()
-
-        # Update task state
-        self.update_state(
-            state='PROCESSING',
-            meta={'step': 'image_processing', 'progress': 10}
-        )
-
-        # Process the image
-        success, error_msg = coin_service.process_image(generation_id, parameters)
-
-        if not success:
-            # Raise a non-retryable error for business logic failures
-            raise ProcessingError(error_msg)
-
-        # Update progress
-        self.update_state(
-            state='PROCESSING',
-            meta={'step': 'image_processed', 'progress': 100}
-        )
-
-        return {
-            'success': True,
-            'generation_id': generation_id,
-            'step': 'image_processed'
-        }
+        # Call the pure function
+        return process_image_task_func(generation_id, parameters, progress_callback)
 
     except ProcessingError:
         # Don't retry business logic errors, just re-raise
         raise
-    except Exception as exc:
-        # For unexpected errors, retry with exponential backoff
+    except RetryableError as exc:
+        # For retryable errors, use Celery's retry mechanism
         if self.request.retries < self.max_retries:
             raise self.retry(
                 exc=exc,
                 countdown=60 * (2 ** self.request.retries),
                 max_retries=self.max_retries
-            )
+            ) from exc
         else:
-            # Max retries reached, raise the original exception
-            raise ProcessingError(f"Task failed after {self.max_retries} retries: {str(exc)}")
+            # Max retries reached, convert to non-retryable error
+            raise ProcessingError(f"Task failed after {self.max_retries} retries: {str(exc)}") from exc
+    except Exception as exc:
+        # Convert unexpected exceptions to retryable errors
+        raise RetryableError(str(exc)) from exc
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
@@ -77,85 +67,93 @@ def generate_stl_task(
     coin_parameters: dict[str, Any]
 ):
     """Celery task for generating STL files."""
+
+    # Create a progress callback that updates Celery task state
+    def celery_progress_callback(progress: int, step: str, extra_data: dict | None = None):
+        self.update_state(
+            state='PROCESSING',
+            meta={'step': step, 'progress': progress, **(extra_data or {})}
+        )
+
+    # Create progress callback wrapper
+    progress_callback = ProgressCallback(
+        task_id=self.request.id,
+        update_func=lambda task_id, status, progress_data: celery_progress_callback(
+            progress_data.get('progress', 0),
+            progress_data.get('step', 'processing'),
+            progress_data
+        )
+    )
+
     try:
-        # Import container inside task to avoid circular imports
-        from core.containers.application import container
-        coin_service = container.coin_generation_service()
-
-        # Create progress callback that updates task state
-        def progress_callback(progress: int, step: str):
-            self.update_state(
-                state='PROCESSING',
-                meta={'step': step, 'progress': progress}
-            )
-
-        # Initial progress
-        progress_callback(10, 'stl_generation_starting')
-
-        # Generate STL with progress callback
-        success, error_msg = coin_service.generate_stl(generation_id, coin_parameters, progress_callback)
-
-        if not success:
-            # Raise a non-retryable error for business logic failures
-            raise ProcessingError(error_msg)
-
-        # Final progress
-        progress_callback(100, 'stl_generated')
-
-        return {
-            'success': True,
-            'generation_id': generation_id,
-            'step': 'stl_generated'
-        }
+        # Call the pure function
+        return generate_stl_task_func(generation_id, coin_parameters, progress_callback)
 
     except ProcessingError:
         # Don't retry business logic errors, just re-raise
         raise
-    except Exception as exc:
-        # For unexpected errors, retry with exponential backoff
+    except RetryableError as exc:
+        # For retryable errors, use Celery's retry mechanism
         if self.request.retries < self.max_retries:
             raise self.retry(
                 exc=exc,
                 countdown=60 * (2 ** self.request.retries),
                 max_retries=self.max_retries
-            )
+            ) from exc
         else:
-            # Max retries reached, raise the original exception
-            raise ProcessingError(f"Task failed after {self.max_retries} retries: {str(exc)}")
+            # Max retries reached, convert to non-retryable error
+            raise ProcessingError(f"Task failed after {self.max_retries} retries: {str(exc)}") from exc
+    except Exception as exc:
+        # Convert unexpected exceptions to retryable errors
+        raise RetryableError(str(exc)) from exc
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=300)
 def cleanup_old_files_task(self):
     """Periodic task to clean up old files."""
-    from django.conf import settings
+
+    # Create a progress callback that updates Celery task state
+    def celery_progress_callback(progress: int, step: str, extra_data: dict | None = None):
+        self.update_state(
+            state='PROCESSING',
+            meta={'step': step, 'progress': progress, **(extra_data or {})}
+        )
+
+    # Create progress callback wrapper
+    progress_callback = ProgressCallback(
+        task_id=self.request.id,
+        update_func=lambda task_id, status, progress_data: celery_progress_callback(
+            progress_data.get('progress', 0),
+            progress_data.get('step', 'processing'),
+            progress_data
+        )
+    )
 
     try:
-        # Import container inside task to avoid circular imports
-        from core.containers.application import container
-        file_storage = container.file_storage()
+        # Call the pure function
+        result = cleanup_old_files_task_func(progress_callback)
 
-        deleted_count = file_storage.cleanup_old_files(settings.FILE_RETENTION)
-        return {
-            'success': True,
-            'deleted_files': deleted_count,
-            'message': f'Cleaned up {deleted_count} old files'
-        }
+        # For cleanup tasks, always return the result even if it indicates failure
+        # This prevents the periodic task from being marked as permanently failed
+        return result
+
     except Exception as exc:
-        # For cleanup tasks, retry once with a longer delay, then log and continue
+        # For cleanup tasks, retry with longer delay, then return partial failure
         if self.request.retries < self.max_retries:
             raise self.retry(
                 exc=exc,
                 countdown=300 * (2 ** self.request.retries),
                 max_retries=self.max_retries
-            )
+            ) from exc
         else:
-            # For periodic tasks, we don't want to fail completely - just log the error
-            # This prevents the periodic task from being marked as failed permanently
+            # Max retries reached - return failure result but don't raise
+            # This allows periodic cleanup to continue running
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Cleanup task failed after {self.max_retries} retries: {str(exc)}")
             return {
                 'success': False,
+                'deleted_files': 0,
                 'error': f"Cleanup failed after retries: {str(exc)}",
                 'retries_exhausted': True
             }

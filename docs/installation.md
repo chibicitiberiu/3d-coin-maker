@@ -1,6 +1,6 @@
 # Installation Guide
 
-This guide covers manual installation of 3D Coin Maker without Docker.
+This guide covers manual installation of 3D Coin Maker without Docker. The application supports two different task processing modes that can be configured during installation.
 
 ## Prerequisites
 
@@ -8,18 +8,38 @@ This guide covers manual installation of 3D Coin Maker without Docker.
 - **Operating System**: Linux, macOS, or Windows
 - **Python**: 3.11 or higher
 - **Node.js**: 20 or higher  
-- **Redis**: 6.0 or higher
+- **Redis**: 6.0 or higher (only required for Celery mode)
 - **Memory**: 2GB+ RAM recommended
 - **Storage**: 1GB+ free space
+
+## Task Processing Modes
+
+3D Coin Maker supports two different background task processing architectures:
+
+### Celery Mode (Recommended for Production)
+- **Requirements**: Redis server for task coordination
+- **Architecture**: Distributed task queue with separate worker processes
+- **Scalability**: Can scale horizontally across multiple servers
+- **Use Cases**: Production web applications, multi-user environments
+
+### APScheduler Mode (Simplified Setup)
+- **Requirements**: None (no external dependencies)
+- **Architecture**: In-process task scheduling using threads
+- **Scalability**: Single-process, limited to one server
+- **Use Cases**: Development, testing, simple deployments
+
+Choose APScheduler mode if you want to avoid setting up Redis or prefer a simpler architecture.
 
 ### Installing Prerequisites
 
 #### Ubuntu/Debian
+
+**For Celery Mode (with Redis):**
 ```bash
 # Update package list
 sudo apt update
 
-# Install Python and Node.js
+# Install Python, Node.js, and Redis
 sudo apt install python3 python3-pip nodejs npm redis-server
 
 # Install Poetry
@@ -29,7 +49,24 @@ curl -sSL https://install.python-poetry.org | python3 -
 npm install -g pnpm
 ```
 
+**For APScheduler Mode (no Redis):**
+```bash
+# Update package list
+sudo apt update
+
+# Install Python and Node.js (no Redis needed)
+sudo apt install python3 python3-pip nodejs npm
+
+# Install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Install pnpm
+npm install -g pnpm
+```
+
 #### macOS (Homebrew)
+
+**For Celery Mode (with Redis):**
 ```bash
 # Install Python, Node.js, and Redis
 brew install python@3 node redis
@@ -41,10 +78,36 @@ curl -sSL https://install.python-poetry.org | python3 -
 npm install -g pnpm
 ```
 
+**For APScheduler Mode (no Redis):**
+```bash
+# Install Python and Node.js (no Redis needed)
+brew install python@3 node
+
+# Install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Install pnpm
+npm install -g pnpm
+```
+
 #### Windows
+
+**For Celery Mode (with Redis):**
 ```powershell
 # Install using Chocolatey
 choco install python nodejs redis-64
+
+# Install Poetry
+(Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
+
+# Install pnpm
+npm install -g pnpm
+```
+
+**For APScheduler Mode (no Redis):**
+```powershell
+# Install using Chocolatey (no Redis needed)
+choco install python nodejs
 
 # Install Poetry
 (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
@@ -101,7 +164,9 @@ pnpm run build
 pnpm run dev
 ```
 
-### 4. Redis Setup
+### 4. Redis Setup (Celery Mode Only)
+
+**Skip this section if using APScheduler mode.**
 
 #### Linux/macOS
 ```bash
@@ -124,33 +189,54 @@ redis-cli ping
 
 ### 5. Start Services
 
-#### Terminal 1: Redis
+Choose the appropriate startup method based on your selected mode:
+
+#### Celery Mode Startup
+
+**Terminal 1: Redis**
 ```bash
 redis-server
 ```
 
-#### Terminal 2: Django Backend
+**Terminal 2: Django Backend**
 ```bash
 cd backend/
 poetry run python manage.py runserver 0.0.0.0:8000
 ```
 
-#### Terminal 3: Celery Worker
+**Terminal 3: Celery Worker**
 ```bash
 cd backend/
 poetry run celery -A coin_maker worker -l info
 ```
 
-#### Terminal 4: Frontend (Development)
+**Terminal 4: Frontend (Development)**
 ```bash
 cd frontend/
 pnpm run dev
 ```
 
+#### APScheduler Mode Startup
+
+**Terminal 1: Django Backend (with integrated task processing)**
+```bash
+cd backend/
+poetry run python manage.py runserver 0.0.0.0:8000
+```
+
+**Terminal 2: Frontend (Development)**
+```bash
+cd frontend/
+pnpm run dev
+```
+
+**Note**: In APScheduler mode, background tasks run within the Django process, so no separate Redis or Celery worker is needed.
+
 ## Environment Configuration
 
 ### Backend Configuration (`config/backend.env`)
 
+**Common Settings (both modes):**
 ```bash
 # Basic Settings
 DEBUG=1                                    # Set to 0 for production
@@ -159,10 +245,6 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 
 # Database (SQLite default)
 DATABASE_URL=sqlite:///db.sqlite3
-
-# Redis Configuration
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
 
 # Rate Limiting
 MAX_GENERATIONS_PER_HOUR=100              # Higher limit for development
@@ -174,6 +256,24 @@ FILE_CLEANUP_INTERVAL=300                 # Cleanup every 5 minutes
 # CORS Settings
 CORS_ALLOW_ALL_ORIGINS=1                  # Set to 0 for production
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
+
+**For Celery Mode (add these settings):**
+```bash
+# Task Queue Mode
+USE_CELERY=true
+
+# Redis Configuration
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+```
+
+**For APScheduler Mode (add these settings):**
+```bash
+# Task Queue Mode
+USE_CELERY=false
+
+# No Redis configuration needed
 ```
 
 ### Frontend Configuration (`config/frontend.env`)
@@ -349,19 +449,30 @@ server {
 
 ### Test Installation
 
+**Common Tests (both modes):**
 ```bash
 # Test backend API
 curl http://localhost:8000/api/health/
 
 # Test frontend (if running dev server)
 curl http://localhost:5173/
+```
 
+**Additional Tests for Celery Mode:**
+```bash
 # Test Redis connection
 redis-cli ping
 
 # Test Celery worker
 cd backend/
 poetry run celery -A coin_maker inspect active
+```
+
+**Verify Task Processing Mode:**
+```bash
+# Check which mode is active
+curl http://localhost:8000/api/health/ | grep -o '"queue_type":"[^"]*"'
+# Should return: "queue_type":"celery" or "queue_type":"apscheduler"
 ```
 
 ### Health Checks

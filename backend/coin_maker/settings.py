@@ -164,6 +164,9 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = config('MAX_UPLOAD_SIZE', default=52428800, cast=i
 # Custom settings for 3D Coin Maker
 TEMP_DIR = config('TEMP_DIR', default=str(BASE_DIR / 'temp'))
 
+# Task Queue Settings
+USE_CELERY = config('USE_CELERY', default=True, cast=bool)
+
 # Rate Limiting Settings
 RATE_LIMITING_ENABLED = config('RATE_LIMITING_ENABLED', default=True, cast=bool)
 MAX_CONCURRENT_GENERATIONS = config('MAX_CONCURRENT_GENERATIONS', default=3, cast=int)

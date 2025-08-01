@@ -40,12 +40,19 @@
 ### Backend (Django + DRF)
 - **Framework**: Django 4.2 + Django REST Framework
 - **Architecture**: Clean architecture with dependency injection
-- **Task Processing**: Celery + Redis for background STL generation
+- **Task Processing**: Unified task queue abstraction (Celery + Redis for production, APScheduler for development)
 - **3D Engine**: HMM + Manifold3D for high-performance mesh generation
 - **Storage**: Temporary filesystem with automatic cleanup
 
+### Task Queue Architecture
+- **Unified Interface**: Abstract task queue supporting multiple implementations
+- **Celery Mode**: Distributed processing with Redis for production deployment
+- **APScheduler Mode**: In-process scheduling for development and testing
+- **Dynamic Switching**: Environment-based mode selection (`USE_CELERY`)
+- **Progress Reporting**: Real-time task progress updates in both modes
+
 ### Infrastructure
-- **Containerization**: Docker + Docker Compose
+- **Containerization**: Docker + Docker Compose with deployment profiles
 - **Rate Limiting**: Configurable per-IP limits (default: 20/hour)
 - **Health Checks**: Built-in monitoring for all services
 - **Security**: Input validation, CORS configuration, process isolation
@@ -111,11 +118,16 @@ pnpm install
 
 ### Development Scripts
 
+The development wrapper script supports both deployment modes:
+
 ```bash
-# Start all services (recommended)
+# Start all services in Celery mode (default - for web deployment)
 ./dc-dev.sh run
 
-# Start individual services
+# Start all services in APScheduler mode (for desktop deployment)
+./dc-dev.sh --mode apscheduler run
+
+# Start individual services (Celery mode)
 ./dc-dev.sh run backend redis celery
 ./dc-dev.sh run frontend-dev
 
@@ -125,6 +137,9 @@ pnpm install
 
 # Restart after changes
 ./dc-dev.sh restart backend
+
+# Rebuild and restart (useful for dependency changes)
+./dc-dev.sh recreate backend
 ```
 
 ### Manual Development
@@ -148,22 +163,12 @@ pnpm run dev
 
 ## Deployment
 
-3D Coin Maker supports multiple deployment scenarios:
+3D Coin Maker can be deployed in production using Docker:
 
-### Production Deployment (Docker)
-- **Guide**: [docs/deployment-docker.md](docs/deployment-docker.md)
-- **Features**: Nginx reverse proxy, Gunicorn WSGI, Redis persistence
-- **Use Case**: Production self-hosting with automatic SSL, monitoring
+- **Production Deployment**: Celery + Redis for distributed task processing → [Docker Deployment Guide](docs/deployment-docker.md)
+- **Development**: Test both Celery and APScheduler modes → [Development Guide](docs/deployment-development.md)
 
-### Development Deployment
-- **Guide**: [docs/deployment-development.md](docs/deployment-development.md)
-- **Features**: Hot reloading, debug logging, relaxed rate limits
-- **Use Case**: Local development and testing
-
-### Manual Deployment
-- **Guide**: [docs/deployment-manual.md](docs/deployment-manual.md)
-- **Features**: System service integration, custom configurations
-- **Use Case**: Integration with existing infrastructure
+The application supports both Celery (distributed) and APScheduler (in-process) task processing. Currently, production deployment uses Celery mode, while APScheduler mode is available for development and testing.
 
 ### Environment Configuration
 
@@ -174,7 +179,10 @@ Key environment variables:
 DEBUG=0                           # Production: 0, Development: 1
 SECRET_KEY=your-secret-key-here   # CHANGE FOR PRODUCTION
 MAX_GENERATIONS_PER_HOUR=20      # Rate limiting
-CELERY_BROKER_URL=redis://redis:6379/0
+
+# Task Queue Configuration
+USE_CELERY=true                   # true = Celery mode, false = APScheduler mode
+CELERY_BROKER_URL=redis://redis:6379/0  # Only required for Celery mode
 
 # Frontend Configuration  
 VITE_API_BASE_URL=http://localhost:8000/api
@@ -342,7 +350,3 @@ See [LICENSE](LICENSE) for the full license text.
 1. Check the [documentation](docs/)
 2. Search [existing issues](https://github.com/yourusername/3d-coin-maker/issues)
 3. Create a new issue with detailed reproduction steps
-
----
-
-**Built with ❤️ using SvelteKit, Django, and HMM + Manifold3D**

@@ -1,6 +1,8 @@
 # Docker Deployment Guide
 
-This guide covers deploying 3D Coin Maker using Docker and Docker Compose for production environments.
+This guide covers deploying 3D Coin Maker in production using Docker with Celery and Redis for distributed background task processing.
+
+---
 
 ## Prerequisites
 

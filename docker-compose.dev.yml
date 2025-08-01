@@ -6,6 +6,7 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
+        USE_CELERY: ${USE_CELERY:-true}
     ports:
       - "8000:8000"
     volumes:
@@ -13,8 +14,6 @@ services:
       - ./temp:/app/temp
     env_file:
       - config/backend.dev.env
-    depends_on:
-      - redis
     command: python manage.py runserver 0.0.0.0:8000
 
   frontend-dev:
@@ -37,6 +36,8 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --save 300 100
+    profiles:
+      - celery
 
   celery:
     build: 
@@ -45,6 +46,7 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
+        USE_CELERY: ${USE_CELERY:-true}
     volumes:
       - ./backend:/app
       - ./temp:/app/temp
@@ -54,6 +56,8 @@ services:
       - redis
       - backend
     command: celery -A coin_maker worker --loglevel=debug
+    profiles:
+      - celery
 
   celery-beat:
     build: 
@@ -62,6 +66,7 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
+        USE_CELERY: ${USE_CELERY:-true}
     volumes:
       - ./backend:/app
       - ./temp:/app/temp
@@ -71,6 +76,8 @@ services:
       - redis
       - backend
     command: celery -A coin_maker beat --loglevel=debug --schedule=/app/temp/celerybeat-schedule
+    profiles:
+      - celery
 
 volumes:
   redis_data:
