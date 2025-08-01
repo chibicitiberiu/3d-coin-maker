@@ -1,8 +1,5 @@
 <script lang="ts">
-	import { Eye, Loader2, Image, AlertTriangle } from 'lucide-svelte';
 	import { browser } from '$app/environment';
-	import { onDestroy } from 'svelte';
-	import STLViewer from '$lib/STLViewer.svelte';
 	import CanvasViewer from '$lib/CanvasViewer.svelte';
 	import ImageUpload from '$lib/ImageUpload.svelte';
 	import ImageProcessingControls from '$lib/ImageProcessingControls.svelte';
@@ -15,7 +12,6 @@
 
 	// Import stores and services
 	import {
-		generationState,
 		generatedSTLUrl,
 		isGenerating as storeIsGenerating,
 		stlGenerationError,
@@ -23,13 +19,11 @@
 		generationActions
 	} from '$lib/stores/generationState';
 	import {
-		imageProcessingState,
 		uploadedFile,
 		uploadedImageUrl,
 		isProcessing as storeIsProcessing,
 		processedImageData,
 		processedImageBlob,
-		processedImageUrl,
 		grayscaleMethod,
 		brightness,
 		contrast,
@@ -38,7 +32,6 @@
 		imageProcessingActions
 	} from '$lib/stores/imageProcessingState';
 	import {
-		coinParametersState,
 		coinShape,
 		coinSize,
 		coinThickness,
@@ -51,7 +44,6 @@
 		coinParametersActions
 	} from '$lib/stores/coinParametersState';
 	import {
-		uiState,
 		activeTab,
 		imageProcessingExpanded,
 		coinParametersExpanded,
@@ -61,7 +53,7 @@
 	import { generationService } from '$lib/services/GenerationService';
 	import { imageProcessingService } from '$lib/services/ImageProcessingService';
 	import { createEventHandlersService, type EventHandlersService } from '$lib/services/EventHandlersService';
-	import type { CoinParameters } from '$lib/services/BackendService';
+	import { coordinateService } from '$lib/services/CoordinateService';
 	
 	// Component references
 	let originalImageElement: HTMLImageElement;
@@ -263,33 +255,7 @@
 	
 	// Canvas rendering is now handled by CanvasViewer component
 
-	// Calculate ruler marks based on coin size
-	function generateRulerMarks(containerSize: number, coinSizeMM: number): Array<{position: number, label: string, major: boolean}> {
-		const marks: Array<{position: number, label: string, major: boolean}> = [];
-		
-		// The canvas starts at 30px offset from ruler origin
-		const rulerOffset = 30;
-		const canvasSize = containerSize - rulerOffset; // Actual canvas size
-		const canvasCenterInRuler = rulerOffset + canvasSize / 2;
-		
-		// Generate marks every 10mm (major) and 5mm (minor) for better spacing
-		const maxRangeMM = Math.floor(canvasSize / $pixelsPerMM / 2);
-		
-		for (let mm = -maxRangeMM; mm <= maxRangeMM; mm += 5) {
-			const position = canvasCenterInRuler + (mm * $pixelsPerMM);
-			if (position >= rulerOffset && position <= containerSize) {
-				const isMajor = mm % 10 === 0;
-				const label = isMajor ? `${mm}mm` : '';
-				marks.push({ position, label, major: isMajor });
-			}
-		}
-		
-		return marks;
-	}
-
-	// Update rulers when coin parameters change  
-	// Ruler containers: horizontal spans canvas(600) + left ruler(30) = 630px
-	// Vertical spans canvas(400) + top ruler(30) = 430px
+	// Ruler calculation moved to CoordinateService
 </script>
 
 <svelte:head>
@@ -361,188 +327,25 @@
 
 
 
-	.controls-panel section {
-		margin-bottom: 1rem;
-	}
+	/* Controls panel styles moved to individual components */
 
 
 
-	.uploaded-image {
-		max-width: 100%;
-		max-height: 100%;
-		object-fit: contain;
-		border-radius: var(--pico-border-radius);
-	}
+	/* Uploaded image styles moved to TabContentViewer */
 
-	:global(.spin) {
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
+	/* Spin animation moved to components that use it */
 
 
-	.control-grid {
-		display: grid;
-		grid-template-columns: 1fr 1.5fr;
-		gap: 0.5rem;
-		align-items: baseline;
-		margin-bottom: 0.4rem;
-	}
-
-	.range-control {
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-	}
-
-	.range-control input[type="range"] {
-		flex: 1;
-		margin: 0;
-		align-self: baseline;
-		margin-top: 0.25rem;
-		height: 16px;
-	}
+	/* Control grid and range styles moved to control components */
 
 	/* Upload styling moved to ImageUpload component */
 
 
-	.control-note {
-		grid-column: 1 / -1;
-		margin-top: -0.25rem;
-		margin-bottom: 0.25rem;
-	}
+	/* Control note, select, checkbox, and hidden utility styles moved to components */
 
-	.controls-panel select {
-		font-size: 11pt;
-		padding: 0.25rem 0.4rem;
-		margin: 0;
-	}
+	/* Collapsible section styles moved to control components */
 
-	.controls-panel input[type="checkbox"] {
-		margin: 0;
-		justify-self: start;
-		align-self: center;
-	}
-
-	/* Drop zone styling moved to ImageUpload component */
-
-	/* Hidden content utility */
-	.hidden {
-		display: none;
-	}
-
-	/* Collapsible sections */
-	.collapsible-header {
-		background: none;
-		border: none;
-		padding: 0;
-		margin: 0;
-		font: inherit;
-		color: inherit;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		user-select: none;
-		transition: color 0.2s;
-		width: 100%;
-		text-align: left;
-		font-size: 1rem;
-		font-weight: 600;
-	}
-
-	.collapsible-header:hover {
-		color: var(--pico-primary);
-	}
-
-	.collapsible-header:focus {
-		outline: 2px solid var(--pico-primary);
-		outline-offset: 2px;
-	}
-
-	.collapse-icon {
-		font-size: 10pt;
-		transition: transform 0.2s;
-		display: inline-block;
-		width: 12px;
-	}
-
-	.collapse-icon.expanded {
-		transform: rotate(90deg);
-	}
-
-	/* Custom slider styling */
-	.controls-panel input[type="range"] {
-		-webkit-appearance: none;
-		appearance: none;
-		height: 4px;
-		background: var(--pico-muted-border-color);
-		border-radius: 2px;
-		outline: none;
-	}
-
-	.controls-panel input[type="range"]::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		appearance: none;
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		background: var(--pico-primary);
-		cursor: pointer;
-		border: 2px solid var(--pico-background-color);
-		box-shadow: 0 0 0 1px var(--pico-muted-border-color);
-	}
-
-	.controls-panel input[type="range"]::-moz-range-thumb {
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		background: var(--pico-primary);
-		cursor: pointer;
-		border: 2px solid var(--pico-background-color);
-		box-shadow: 0 0 0 1px var(--pico-muted-border-color);
-	}
-
-	.controls-panel input[type="range"]::-moz-range-track {
-		height: 4px;
-		background: var(--pico-muted-border-color);
-		border-radius: 2px;
-		border: none;
-	}
-
-	/* Prepared Image Viewer with Status Bar */
-	.prepared-image-viewer {
-		height: 100%;
-		display: flex;
-		flex-direction: column;
-		background: var(--pico-background-color);
-		border-radius: var(--pico-border-radius);
-	}
-
-	/* Canvas styling moved to CanvasViewer component */
-
-
-	.control-grid label {
-		display: block;
-		margin: 0;
-		font-size: 11pt;
-		color: var(--pico-color);
-		align-self: baseline;
-		padding-top: 0.25rem;
-	}
-
-
-	.number-input {
-		width: 60px;
-		padding: 0.125rem 0.25rem;
-		font-size: 11pt;
-		margin: 0;
-		align-self: baseline;
-		margin-top: 0.25rem;
-	}
+	/* All control styling moved to individual components */
 
 
 
