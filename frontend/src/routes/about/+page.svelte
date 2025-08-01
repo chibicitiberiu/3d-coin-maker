@@ -3,19 +3,19 @@
 </script>
 
 <svelte:head>
-	<title>About - Coin Maker</title>
+	<title>About - 3D Coin Maker</title>
 </svelte:head>
 
 <article>
 	<header>
-		<h1>About Coin Maker</h1>
+		<h1>About 3D Coin Maker</h1>
 		<p>Transform your images into 3D printable coins</p>
 	</header>
 
 	<section>
-		<h2>What is Coin Maker?</h2>
+		<h2>What is 3D Coin Maker?</h2>
 		<p>
-			Coin Maker is a self-hostable web application that converts your images into 3D printable coin STL files. 
+			3D Coin Maker is a self-hostable web application that converts your images into 3D printable coin STL files. 
 			Upload an image, adjust the processing parameters, and generate a custom coin ready for 3D printing.
 		</p>
 

@@ -259,7 +259,7 @@
 </script>
 
 <svelte:head>
-	<title>Coin Maker - Generate 3D Printable Coins</title>
+	<title>3D Coin Maker - Generate 3D Printable Coins</title>
 </svelte:head>
 
 <MainLayout>

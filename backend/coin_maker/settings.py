@@ -161,7 +161,7 @@ if not CORS_ALLOW_ALL_ORIGINS:
 FILE_UPLOAD_MAX_MEMORY_SIZE = config('MAX_UPLOAD_SIZE', default=52428800, cast=int)
 DATA_UPLOAD_MAX_MEMORY_SIZE = config('MAX_UPLOAD_SIZE', default=52428800, cast=int)
 
-# Custom settings for Coin Maker
+# Custom settings for 3D Coin Maker
 TEMP_DIR = config('TEMP_DIR', default=str(BASE_DIR / 'temp'))
 
 # Rate Limiting Settings

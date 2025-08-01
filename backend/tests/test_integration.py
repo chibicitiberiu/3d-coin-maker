@@ -1,5 +1,5 @@
 """
-Integration tests for Coin Maker API endpoints.
+Integration tests for 3D Coin Maker API endpoints.
 """
 import io
 import time

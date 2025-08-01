@@ -8,7 +8,7 @@
 		<ul>
 			<li>
 				<a href="/" class="contrast">
-					<strong>Coin Maker</strong>
+					<strong>3D Coin Maker</strong>
 				</a>
 			</li>
 		</ul>
