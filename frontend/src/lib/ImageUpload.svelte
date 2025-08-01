@@ -130,7 +130,7 @@
 				disabled={isUploading || disabled}
 			>
 				{#if isUploading}
-					<Loader2 size={12} class="spin" />
+					<Loader2 size={12} class="u-spin" />
 				{:else}
 					Browse
 				{/if}
@@ -171,14 +171,17 @@
 
 	.upload-status {
 		@include flex-gap($spacing-tight);
-		font-size: 9pt; // Keep smaller than $font-micro for status text
+		font-size: $font-tiny; // Use design system variable
 		color: var(--pico-muted-color);
 		flex: 1;
 		min-width: 0;
+		max-width: 12rem; // Constrain width to force earlier ellipsis
 	}
 
 	.upload-status span {
 		@include text-truncate;
+		flex: 1;
+		min-width: 0;
 	}
 
 	// Drop zone styling

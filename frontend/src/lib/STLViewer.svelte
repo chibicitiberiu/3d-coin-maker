@@ -402,6 +402,7 @@
 	@use '$lib/styles/mixins' as *;
 
 	.stl-viewer-container {
+		@include css-containment($gpu-accelerate: true);
 		position: relative;
 		width: 100%;
 		height: 100%;
@@ -420,9 +421,9 @@
 		bottom: $spacing-medium;
 		right: $spacing-medium;
 		@include flex-gap($spacing-small);
-		background: rgba(255, 255, 255, 0.9);
-		backdrop-filter: blur(4px);
-		padding: 0.375rem;
+		background: $semi-white;
+		backdrop-filter: blur($backdrop-blur);
+		padding: $spacing-small;
 		border-radius: var(--pico-border-radius);
 		border: 1px solid var(--pico-muted-border-color);
 	}
@@ -431,24 +432,31 @@
 		background: transparent;
 		border: 1px solid var(--pico-muted-border-color);
 		border-radius: var(--pico-border-radius);
-		padding: 0.375rem;
+		padding: $spacing-small;
 		cursor: pointer;
-		transition: all 0.2s;
+		transition: all $transition-normal;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
+		width: $button-size;
+		height: $button-size;
+		color: var(--pico-muted-color); // Use muted color for better contrast
+		
+		// Ensure SVG icons inherit color
+		:global(svg) {
+			color: inherit;
+		}
 	}
 
 	.control-btn:hover {
 		background: var(--pico-primary-100);
 		border-color: var(--pico-primary-300);
+		color: var(--pico-primary);
 	}
 
 	.control-btn.active {
-		background: var(--pico-primary-500);
+		background: var(--pico-primary);
 		color: white;
-		border-color: var(--pico-primary-500);
+		border-color: var(--pico-primary);
 	}
 </style>

@@ -105,7 +105,7 @@
 			{:else if currentIsProcessing}
 				<div class="placeholder-container">
 					<div class="placeholder-content">
-						<Loader2 size={48} class="spin" />
+						<Loader2 size={48} class="u-spin" />
 						<h3>Processing Image</h3>
 						<p>Applying image processing parameters...</p>
 					</div>
@@ -126,7 +126,7 @@
 				<STLViewer stlUrl={currentGeneratedSTLUrl} />
 			{:else if currentIsGenerating}
 				<div class="placeholder-content">
-					<Loader2 size={48} class="spin" />
+					<Loader2 size={48} class="u-spin" />
 					<h3>Generating STL</h3>
 					{#if currentGenerationProgress}
 						<div class="progress-container">
@@ -189,6 +189,10 @@
 		object-fit: contain;
 		cursor: grab;
 		user-select: none;
+		
+		&:focus-visible {
+			@include focus-outline;
+		}
 	}
 
 	.uploaded-image:active {
@@ -232,7 +236,7 @@
 		width: 100%;
 		height: 0.5rem; // 8px → rem
 		background: var(--pico-muted-background-color);
-		border-radius: 4px;
+		border-radius: $radius-normal;
 		overflow: hidden;
 		margin-bottom: $spacing-normal;
 	}
@@ -284,7 +288,7 @@
 		color: var(--pico-muted-color);
 		padding: $spacing-tight 0.5rem; // 4px 8px → rem
 		font-size: $font-small;
-		border-radius: 3px;
+		border-radius: $radius-small;
 		cursor: pointer;
 	}
 
@@ -321,13 +325,4 @@
 		font-style: italic;
 	}
 
-	/* Spinning animation */
-	:global(.spin) {
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
 </style>

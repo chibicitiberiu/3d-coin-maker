@@ -35,6 +35,10 @@
 	:root {
 		--header-bg-color: color-mix(in srgb, var(--pico-primary-background) 20%, var(--pico-background-color));
 		--header-height: 3.5rem; // Approximate header height
+		
+		// Layout height calculations
+		--content-height: calc(100vh - var(--header-height) - #{$spacing-tight});
+		--panel-max-height: calc(100vh - var(--header-height) - #{$spacing-xxl} - #{$spacing-tight});
 	}
 
 	header.main-header {
@@ -68,7 +72,7 @@
 	}
 	
 	main {
-		min-height: calc(100vh - var(--header-height) - #{$spacing-tight}); // Full height minus header and margin
+		min-height: var(--content-height); // Full height minus header and margin
 		padding: 0 $spacing-normal;
 	}
 </style>

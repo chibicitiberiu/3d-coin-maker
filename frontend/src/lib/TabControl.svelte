@@ -43,53 +43,36 @@
 	}
 
 	.tab {
+		@include button-reset;
 		flex: 1;
-		background: transparent !important;
-		border: none;
 		padding: $spacing-normal;
-		cursor: pointer;
-		transition: all $transition-normal $easing-standard;
-		border-bottom: 3px solid transparent;
 		font-size: $font-small;
-		color: var(--pico-color) !important;
-		--pico-primary-inverse: var(--pico-color);
-	}
-
-	.tab:hover:not(.disabled) {
-		background: var(--pico-muted-background-color) !important;
-		color: var(--pico-color) !important;
-		--pico-primary-inverse: var(--pico-color);
-	}
-
-	.tab.disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	// Force override Pico CSS button styling for tabs
-	.tabs button.tab {
-		color: var(--pico-color) !important;
-		background-color: transparent !important;
-		border-color: transparent !important;
-	}
-
-	.tabs button.tab:hover:not(.disabled) {
-		color: var(--pico-color) !important;
-		background-color: var(--pico-muted-background-color) !important;
-		border-color: transparent !important;
-	}
-
-	.tabs button.tab.active {
-		color: var(--pico-color) !important;
-		background-color: var(--pico-card-background-color) !important;
-		border-color: transparent !important;
-	}
-
-	.tab.active {
-		background: var(--pico-card-background-color) !important;
-		border-bottom-color: var(--pico-primary-500);
-		font-weight: $weight-semibold;
-		color: var(--pico-color) !important;
-		--pico-primary-inverse: var(--pico-color);
+		color: var(--pico-muted-color); // Use muted color for better contrast
+		background: var(--pico-muted-background-color);
+		border-bottom: 3px solid transparent;
+		transition: all $transition-normal $easing-standard;
+		
+		&:hover:not(.disabled) {
+			background: var(--pico-card-background-color);
+			color: var(--pico-primary);
+		}
+		
+		&.active {
+			background: var(--pico-card-background-color);
+			border-bottom-color: var(--pico-primary);
+			font-weight: $weight-semibold;
+			color: var(--pico-primary);
+		}
+		
+		&.disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+		
+		&:focus-visible {
+			@include focus-outline;
+		}
+		
+		@include high-contrast-support;
 	}
 </style>

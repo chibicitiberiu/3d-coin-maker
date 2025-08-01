@@ -79,7 +79,7 @@
 		<span class="collapse-icon" class:expanded>▶</span>
 		Coin Parameters
 	</button>
-	<div id="coin-parameters-content" class:hidden={!expanded}>
+	<div id="coin-parameters-content" class:u-hidden={!expanded}>
 	
 	<div class="control-grid">
 		<label for="coin-shape">Shape</label>
@@ -191,12 +191,7 @@
 	}
 
 	.number-input {
-		width: $number-input-width;
-		padding: $spacing-micro $spacing-tight;
-		font-size: $font-small;
-		margin: 0;
-		align-self: baseline;
-		margin-top: $spacing-tight;
+		@include control-input;
 	}
 
 	.control-grid label {
@@ -209,10 +204,7 @@
 	}
 
 	.control-note {
-		grid-column: 1 / -1;
-		margin-top: -$spacing-tight;
-		margin-bottom: $spacing-tight;
-		margin-left: $spacing-tight; // Match control-grid left margin
+		@include control-note;
 	}
 
 	select {
@@ -221,10 +213,6 @@
 		margin: 0;
 	}
 
-	// Hidden content utility
-	.hidden {
-		display: none;
-	}
 
 	// Collapsible sections - use our mixin
 	.collapsible-header {
@@ -236,14 +224,7 @@
 	}
 
 	.collapse-icon {
-		font-size: $font-micro;
-		transition: transform $transition-normal $easing-standard;
-		display: inline-block;
-		width: 0.75rem; // 12px → rem
-		
-		&.expanded {
-			transform: rotate(90deg);
-		}
+		@include collapse-icon;
 	}
 
 	// Custom range styling - use our global mixin

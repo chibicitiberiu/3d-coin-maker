@@ -85,7 +85,7 @@
 		disabled={!currentProcessedImageBlob || currentIsGenerating}
 	>
 		{#if currentIsGenerating}
-			<Loader2 size={14} class="spin" />
+			<Loader2 size={14} class="u-spin" />
 			Generating...
 		{:else}
 			Generate STL
@@ -119,13 +119,4 @@
 		padding: $spacing-normal $spacing-large;
 	}
 
-	// Spin animation - define it directly since @extend doesn't work across components
-	:global(.spin) {
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
 </style>

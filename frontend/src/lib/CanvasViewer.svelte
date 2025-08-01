@@ -29,8 +29,8 @@
 	let lastCanvasWidth = 0;
 	let lastCanvasHeight = 0;
 
-	// UI constants
-	const PRIMARY_COLOR = '#0172ad';
+	// UI constants - use design system
+	const PRIMARY_COLOR = '#0172ad'; // TODO: Get from CSS custom property
 	
 	// Convert hex color to RGB values for transparency
 	function hexToRgb(hex: string): {r: number, g: number, b: number} {
@@ -562,8 +562,17 @@
 <style lang="scss">
 	@use '$lib/styles/variables' as *;
 	@use '$lib/styles/mixins' as *;
+	
+	// Canvas color custom properties - for JavaScript access
+	:root {
+		--canvas-background: #{$light-gray-bg};
+		--canvas-grid-line: #{$grid-line};
+		--canvas-axis-line: #{$axis-line};
+		--canvas-primary: #{$primary-blue};
+	}
 
 	.prepared-canvas-container {
+		@include css-containment($gpu-accelerate: true);
 		position: relative;
 		width: 100%;
 		flex: 1;
@@ -581,8 +590,12 @@
 		border-radius: var(--pico-border-radius);
 		background: $light-gray-bg;
 		z-index: 1;
-		margin-left: 1.875rem; // 30px → rem
-		margin-top: 1.875rem; // 30px → rem
+		margin-left: $margin-canvas; // Use design system variable
+		margin-top: $margin-canvas; // Use design system variable
+		
+		&:focus-visible {
+			@include focus-outline;
+		}
 	}
 	
 	.prepared-canvas:active {

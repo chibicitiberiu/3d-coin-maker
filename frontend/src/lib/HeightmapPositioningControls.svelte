@@ -56,7 +56,7 @@
 		<span class="collapse-icon" class:expanded>▶</span>
 		Heightmap Positioning
 	</button>
-	<div id="heightmap-positioning-content" class:hidden={!expanded}>
+	<div id="heightmap-positioning-content" class:u-hidden={!expanded}>
 	
 	<div class="control-grid">
 		<label for="heightmap-scale">Scale (%)</label>
@@ -165,12 +165,7 @@
 	}
 
 	.number-input {
-		width: $number-input-width;
-		padding: $spacing-micro $spacing-tight;
-		font-size: $font-small;
-		margin: 0;
-		align-self: baseline;
-		margin-top: $spacing-tight;
+		@include control-input;
 	}
 
 	.control-grid label {
@@ -183,16 +178,13 @@
 	}
 
 	.control-note {
-		grid-column: 1 / -1;
-		margin-top: -$spacing-tight;
-		margin-bottom: $spacing-tight;
-		margin-left: $spacing-tight; // Match control-grid left margin
+		@include control-note;
 	}
 
 	.rotation-control {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
+		gap: $spacing-small;
 	}
 
 	.rotation-control .rotation-slider {
@@ -206,10 +198,6 @@
 	}
 
 
-	// Hidden content utility
-	.hidden {
-		display: none;
-	}
 
 	// Collapsible sections - use our mixin
 	.collapsible-header {
@@ -221,14 +209,7 @@
 	}
 
 	.collapse-icon {
-		font-size: $font-micro;
-		transition: transform $transition-normal $easing-standard;
-		display: inline-block;
-		width: 0.75rem; // 12px → rem
-		
-		&.expanded {
-			transform: rotate(90deg);
-		}
+		@include collapse-icon;
 	}
 
 	// Custom range styling - use our global mixin

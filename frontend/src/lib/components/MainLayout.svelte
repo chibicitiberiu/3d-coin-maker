@@ -31,7 +31,7 @@
 		display: grid;
 		grid-template-columns: $app-grid-columns; // 30% 70%
 		gap: $spacing-large;
-		height: calc(100vh - var(--header-height) - #{$spacing-tight}); // Subtract header height + margin
+		height: var(--content-height); // Subtract header height + margin
 		padding: $spacing-large;
 		box-sizing: border-box;
 	}
@@ -44,7 +44,7 @@
 		border-radius: var(--pico-border-radius);
 		overflow: hidden;
 		height: fit-content;
-		max-height: calc(100vh - var(--header-height) - #{$spacing-xxl} - #{$spacing-tight}); // Header + padding + margin
+		max-height: var(--panel-max-height); // Header + padding + margin
 	}
 
 	.controls-header {
@@ -80,7 +80,7 @@
 		border: $border-thin solid var(--pico-card-border-color);
 		border-radius: var(--pico-border-radius);
 		overflow: hidden;
-		height: calc(100vh - var(--header-height) - #{$spacing-xxl} - #{$spacing-tight}); // Header + padding + margin
+		height: var(--panel-max-height); // Header + padding + margin
 	}
 
 	// Mobile Responsiveness

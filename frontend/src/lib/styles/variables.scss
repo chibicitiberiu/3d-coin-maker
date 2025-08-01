@@ -14,9 +14,13 @@ $spacing-large: 1rem;        // 16px - Standard spacing (used 24x)
 $spacing-xl: 1.5rem;         // 24px - Large spacing
 $spacing-xxl: 2rem;          // 32px - Extra large spacing
 
+// Special spacing
+$margin-canvas: 1.875rem;    // 30px - Canvas positioning margin
+
 // -----------------------------------------------------------------------------
 // TYPOGRAPHY SCALE (pt-based for fonts)
 // -----------------------------------------------------------------------------
+$font-tiny: 9pt;             // Tiny status text (smallest)
 $font-micro: 10pt;           // Micro text
 $font-small: 11pt;           // Small controls (used 16x)
 $font-body: 12pt;            // Body text
@@ -42,6 +46,11 @@ $number-input-width: 3.75rem;    // 60px - Number input width (used 4x)
 $thumb-size: 0.875rem;           // 14px - Range slider thumb
 $track-height: 0.25rem;          // 4px - Range slider track
 
+// Component-specific dimensions
+$collapse-icon-width: 0.75rem;   // 12px - Collapsible header icons (used 3x)
+$upload-button-min-width: 3.4375rem; // 55px - ImageUpload button minimum
+$backdrop-blur: 4px;              // Backdrop filter blur value
+
 // Border widths (keep in px for precision)
 $border-thin: 1px;
 $border-normal: 2px;
@@ -60,24 +69,78 @@ $app-grid-columns: 30% 70%;          // Main app layout
 $container-max-width: 80rem;         // 1280px
 
 // -----------------------------------------------------------------------------
-// COLORS (Custom colors + PicoCSS integration)
+// COLORS (SCSS Maps + PicoCSS integration)
 // -----------------------------------------------------------------------------
 
-// Custom brand colors
-$primary-blue: #0172ad;          // Primary blue (used 3x)
-$gold-bronze: #B8860B;           // Coin gold color
-$light-gray-bg: #f8f9fa;         // Light background (used 3x)
+// Systematic color organization with SCSS maps
+$colors: (
+  primary: (
+    blue: #0172ad,
+    gold: #B8860B,
+  ),
+  grays: (
+    light-bg: #f8f9fa,
+    grid-line: rgba(0, 0, 0, 0.1),
+    axis-line: rgba(64, 64, 64, 0.7),
+  ),
+  errors: (
+    red: #f56565,
+    dark-red: #c53030,
+    darker-red: #742a2a,
+    bg: #fed7d7,
+  ),
+  utilities: (
+    semi-white: rgba(255, 255, 255, 0.9),
+  )
+);
 
-// Error color palette
-$error-red: #f56565;             // Error text/border
-$error-dark-red: #c53030;        // Error hover state
-$error-darker-red: #742a2a;      // Error active state
-$error-bg: #fed7d7;              // Error background
+// Color accessor function
+@function color($category, $variant) {
+  @return map-get(map-get($colors, $category), $variant);
+}
 
-// Utility colors
-$semi-white: rgba(255, 255, 255, 0.9);   // Semi-transparent overlay
-$grid-line: rgba(0, 0, 0, 0.1);          // Canvas grid lines
-$axis-line: rgba(64, 64, 64, 0.7);       // Canvas axis lines
+// Utility functions for common calculations
+@function rem($px) {
+  @return #{$px / 16}rem;
+}
+
+@function em($px, $context: 16) {
+  @return #{$px / $context}em;
+}
+
+/// Get fluid typography value
+/// @param {String} $variant - Typography variant (body, normal, large)
+/// @return {String} CSS clamp value
+@function fluid-type($variant) {
+  @return map-get($fluid-typography, $variant);
+}
+
+/// Validation function for spacing values
+/// @param {*} $value - Value to validate
+/// @return {*} Original value if valid
+@function validate-spacing($value) {
+  $valid-spacings: (
+    $spacing-micro, $spacing-tight, $spacing-small, $spacing-normal,
+    $spacing-medium, $spacing-large, $spacing-xl, $spacing-xxl
+  );
+  
+  @if index($valid-spacings, $value) == null and $value != 0 {
+    @warn "Invalid spacing value: #{$value}. Consider using design system variables for consistency.";
+  }
+  @return $value;
+}
+
+// Legacy color variables for backward compatibility
+$primary-blue: color(primary, blue);
+$gold-bronze: color(primary, gold);
+$light-gray-bg: color(grays, light-bg);
+$semi-white: color(utilities, semi-white);
+$error-red: color(errors, red);
+$error-dark-red: color(errors, dark-red);
+$error-darker-red: color(errors, darker-red);
+$error-bg: color(errors, bg);
+$grid-line: color(grays, grid-line);
+$axis-line: color(grays, axis-line);
 
 // -----------------------------------------------------------------------------
 // Z-INDEX SCALE
@@ -98,15 +161,29 @@ $transition-normal: 0.2s;
 $transition-slow: 0.3s;
 
 $easing-standard: ease;
-$easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-$easing-enter: cubic-bezier(0, 0, 0.2, 1);
-$easing-exit: cubic-bezier(0.4, 0, 1, 1);
 
 // -----------------------------------------------------------------------------
-// BREAKPOINTS (for responsive design)
+// BREAKPOINTS (for responsive design) 
 // -----------------------------------------------------------------------------
 $breakpoint-sm: 640px;
 $breakpoint-md: 768px;
 $breakpoint-lg: 1024px;
 $breakpoint-xl: 1280px;
 $breakpoint-xxl: 1536px;
+
+// -----------------------------------------------------------------------------
+// CSS CUSTOM PROPERTIES (for complex calculations)
+// -----------------------------------------------------------------------------
+// Note: These will be output as CSS custom properties in global styles
+$content-height: calc(100vh - var(--header-height) - #{$spacing-tight});
+$panel-max-height: calc(100vh - var(--header-height) - #{$spacing-xxl} - #{$spacing-tight});
+
+// -----------------------------------------------------------------------------
+// FLUID TYPOGRAPHY SYSTEM
+// -----------------------------------------------------------------------------
+// Viewport-responsive typography using CSS clamp()
+$fluid-typography: (
+  'body': clamp(#{$font-small}, 2.5vw, #{$font-body}),
+  'normal': clamp(#{$font-body}, 3vw, #{$font-normal}),
+  'large': clamp(#{$font-normal}, 3.5vw, #{$font-large})
+);

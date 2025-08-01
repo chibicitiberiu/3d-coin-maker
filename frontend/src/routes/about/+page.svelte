@@ -48,15 +48,15 @@
 		<h2>Contact & Links</h2>
 		<div class="grid">
 			<div>
-				<h4><Mail size={20} style="display: inline; margin-right: 0.5rem;" />Contact</h4>
+				<h4><Mail size={20} class="icon" />Contact</h4>
 				<p>For questions or support, please reach out via the project repository.</p>
 			</div>
 			<div>
-				<h4><Github size={20} style="display: inline; margin-right: 0.5rem;" />Source Code</h4>
+				<h4><Github size={20} class="icon" />Source Code</h4>
 				<p>This project is open source and available on GitHub.</p>
 			</div>
 			<div>
-				<h4><Globe size={20} style="display: inline; margin-right: 0.5rem;" />Self-Hosting</h4>
+				<h4><Globe size={20} class="icon" />Self-Hosting</h4>
 				<p>Deploy your own instance with Docker Compose for private use.</p>
 			</div>
 		</div>
@@ -93,9 +93,14 @@
 	}
 	
 	footer {
-		margin-top: $spacing-xxxl; // 3rem → design system variable
+		margin-top: $spacing-xxl; // 2rem → design system variable
 		padding-top: $spacing-xxl; // 2rem → design system variable
 		border-top: $border-thin solid var(--pico-muted-border-color);
 		text-align: center;
+	}
+	
+	.icon {
+		display: inline;
+		margin-inline-end: $spacing-normal; // Logical property for better i18n
 	}
 </style>

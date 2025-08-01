@@ -53,6 +53,11 @@
   box-sizing: border-box;
 }
 
+// Global accessibility enhancements
+* {
+  @include respect-motion-preferences;
+}
+
 // Better default focus styles for accessibility
 :focus-visible {
   @include focus-outline;

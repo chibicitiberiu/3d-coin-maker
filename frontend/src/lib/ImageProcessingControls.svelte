@@ -89,7 +89,7 @@
 		<span class="collapse-icon" class:expanded>▶</span>
 		Image Processing
 	</button>
-	<div id="image-processing-content" class:hidden={!expanded}>
+	<div id="image-processing-content" class:u-hidden={!expanded}>
 	
 	<div class="control-grid">
 		<label for="grayscale-method">Grayscale Method</label>
@@ -211,12 +211,7 @@
 	}
 
 	.number-input {
-		width: $number-input-width;
-		padding: $spacing-micro $spacing-tight;
-		font-size: $font-small;
-		margin: 0;
-		align-self: baseline;
-		margin-top: $spacing-tight;
+		@include control-input;
 	}
 
 	.control-grid label {
@@ -240,10 +235,6 @@
 		align-self: center;
 	}
 
-	// Hidden content utility - could use global .u-hidden instead
-	.hidden {
-		display: none;
-	}
 
 	// Collapsible sections - use our mixin
 	.collapsible-header {
@@ -255,14 +246,7 @@
 	}
 
 	.collapse-icon {
-		font-size: $font-micro;
-		transition: transform $transition-normal $easing-standard;
-		display: inline-block;
-		width: 0.75rem; // 12px → rem
-		
-		&.expanded {
-			transform: rotate(90deg);
-		}
+		@include collapse-icon;
 	}
 
 	// Custom range styling - use our global mixin

@@ -8,14 +8,19 @@
 // LAYOUT MIXINS
 // -----------------------------------------------------------------------------
 
-// Control grid layout (used 4x across components)
+/// Creates a standardized control grid layout
+/// @group layout  
+/// @param {Length} $gap [$spacing-normal] - Grid gap
+/// @param {List} $columns [$control-grid-columns] - Grid template columns
+/// @example scss - Basic usage
+///   .my-controls { @include control-grid; }
 @mixin control-grid {
   display: grid;
   grid-template-columns: $control-grid-columns;
   gap: $spacing-normal;
   align-items: baseline;
   margin-bottom: 0.4rem;
-  margin-left: $spacing-tight; // Add small left margin for visual separation
+  margin-inline-start: $spacing-tight; // Logical property for better i18n
 }
 
 // Flex patterns
@@ -42,9 +47,137 @@
   align-items: center;
 }
 
+@mixin flex-align {
+  display: flex;
+  align-items: center;
+}
+
 // -----------------------------------------------------------------------------
 // COMPONENT MIXINS
 // -----------------------------------------------------------------------------
+
+// Control input styling (used 3x across components)
+@mixin control-input {
+  width: $number-input-width;
+  padding: $spacing-micro $spacing-tight;
+  font-size: $font-small;
+  margin: 0;
+  align-self: baseline;
+  margin-top: $spacing-tight;
+}
+
+// Collapsible header icon styling (used 3x across components)
+@mixin collapse-icon {
+  font-size: $font-micro;
+  transition: transform $transition-normal $easing-standard;
+  display: inline-block;
+  width: $collapse-icon-width;
+  
+  &.expanded {
+    transform: rotate(90deg);
+  }
+}
+
+// Control note styling (used 2x across components)
+@mixin control-note {
+  grid-column: 1 / -1;
+  margin-top: -$spacing-tight;
+  margin-bottom: $spacing-tight;
+  margin-inline-start: $spacing-tight; // Logical property for better i18n
+}
+
+/// Advanced button reset for overriding framework styles
+/// @group buttons
+/// @param {Boolean} $include-hover [true] - Include hover state styling
+/// @param {Boolean} $include-transition [true] - Include transition effects
+/// @example scss - Basic reset
+///   .custom-button { @include button-reset; }
+/// @example scss - Reset without hover
+///   .custom-button { @include button-reset($include-hover: false); }
+@mixin button-reset($include-hover: true, $include-transition: true) {
+  appearance: none;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  
+  @if $include-transition {
+    transition: color $transition-normal $easing-standard;
+  }
+  
+  @if $include-hover {
+    &:hover {
+      color: var(--pico-primary);
+    }
+  }
+}
+
+// Placeholder for shared range slider thumb styles
+%slider-thumb {
+  width: $thumb-size;
+  height: $thumb-size;
+  border-radius: $radius-round;
+  background: var(--pico-primary);
+  cursor: pointer;
+  border: $border-normal solid var(--pico-background-color);
+  box-shadow: 0 0 0 1px var(--pico-muted-border-color);
+  transition: background-color $transition-normal $easing-standard;
+}
+
+%slider-thumb-hover {
+  background: var(--pico-primary-hover);
+}
+
+// Logical properties mixins for better i18n support
+@mixin logical-spacing($block-start: 0, $inline-end: 0, $block-end: 0, $inline-start: 0) {
+  margin-block-start: $block-start;
+  margin-inline-end: $inline-end;
+  margin-block-end: $block-end;
+  margin-inline-start: $inline-start;
+}
+
+// Accessibility mixins
+@mixin high-contrast-support {
+  @media (prefers-contrast: high) {
+    border: 2px solid;
+    background: Canvas;
+    color: CanvasText;
+  }
+}
+
+@mixin respect-motion-preferences {
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+// Container query mixins for component-level responsiveness
+@mixin container-query($size, $type: inline-size) {
+  @container (min-#{$type}: #{$size}) {
+    @content;
+  }
+}
+
+/// Performance optimization mixin using CSS containment
+/// @group performance
+/// @param {String} $type [layout style paint] - Containment type
+/// @param {Boolean} $gpu-accelerate [false] - Enable GPU acceleration
+/// @example scss - Basic containment
+///   .heavy-component { @include css-containment; }
+@mixin css-containment($type: layout style paint, $gpu-accelerate: false) {
+  contain: #{$type};
+  
+  @if $gpu-accelerate {
+    transform: translateZ(0);
+    will-change: transform, opacity;
+  }
+}
 
 // Range control styling (used 4x)
 @mixin range-control {
@@ -61,7 +194,7 @@
   }
 }
 
-// Custom range slider appearance (used 4x)
+// Custom range slider appearance (used 4x) - optimized with placeholders
 @mixin custom-range-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -73,33 +206,19 @@
   &::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: $thumb-size;
-    height: $thumb-size;
-    border-radius: $radius-round;
-    background: var(--pico-primary);
-    cursor: pointer;
-    border: $border-normal solid var(--pico-background-color);
-    box-shadow: 0 0 0 1px var(--pico-muted-border-color);
-    transition: background-color $transition-normal $easing-standard;
+    @extend %slider-thumb;
   }
   
   &::-moz-range-thumb {
-    width: $thumb-size;
-    height: $thumb-size;
-    border-radius: $radius-round;
-    background: var(--pico-primary);
-    cursor: pointer;
-    border: $border-normal solid var(--pico-background-color);
-    box-shadow: 0 0 0 1px var(--pico-muted-border-color);
-    transition: background-color $transition-normal $easing-standard;
+    @extend %slider-thumb;
   }
   
   &:hover::-webkit-slider-thumb {
-    background: var(--pico-primary-hover);
+    @extend %slider-thumb-hover;
   }
   
   &:hover::-moz-range-thumb {
-    background: var(--pico-primary-hover);
+    @extend %slider-thumb-hover;
   }
 }
 
@@ -125,21 +244,6 @@
   }
 }
 
-// Button reset (used 3x)
-@mixin button-reset {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  transition: color $transition-normal $easing-standard;
-  
-  &:hover {
-    color: var(--pico-primary);
-  }
-}
 
 // Status bar styling (used 2x)
 @mixin status-bar {

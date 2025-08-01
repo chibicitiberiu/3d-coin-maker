@@ -26,35 +26,62 @@
 }
 
 // -----------------------------------------------------------------------------
-// SPACING UTILITIES
+// SPACING UTILITIES (Loop-Generated for DRY Principle)
 // -----------------------------------------------------------------------------
 
-// Margin utilities
-.u-m-0 { margin: 0; }
-.u-m-tight { margin: $spacing-tight; }
-.u-m-normal { margin: $spacing-normal; }
-.u-m-large { margin: $spacing-large; }
+// Spacing scale map for utility generation
+$spacing-variants: (
+  '0': 0,
+  'micro': $spacing-micro,
+  'tight': $spacing-tight,
+  'small': $spacing-small,
+  'normal': $spacing-normal,
+  'medium': $spacing-medium,
+  'large': $spacing-large,
+  'xl': $spacing-xl,
+  'xxl': $spacing-xxl
+);
 
-.u-mt-0 { margin-top: 0; }
-.u-mt-tight { margin-top: $spacing-tight; }
-.u-mt-normal { margin-top: $spacing-normal; }
-.u-mt-large { margin-top: $spacing-large; }
+// Property mapping for spacing utilities
+$spacing-properties: (
+  'm': 'margin',
+  'mt': 'margin-top',
+  'mb': 'margin-bottom',
+  'ml': 'margin-left',
+  'mr': 'margin-right',
+  'mx': ('margin-left', 'margin-right'),
+  'my': ('margin-top', 'margin-bottom'),
+  'p': 'padding',
+  'pt': 'padding-top',
+  'pb': 'padding-bottom',
+  'pl': 'padding-left',
+  'pr': 'padding-right',
+  'px': ('padding-left', 'padding-right'),
+  'py': ('padding-top', 'padding-bottom')
+);
 
-.u-mb-0 { margin-bottom: 0; }
-.u-mb-tight { margin-bottom: $spacing-tight; }
-.u-mb-normal { margin-bottom: $spacing-normal; }
-.u-mb-large { margin-bottom: $spacing-large; }
+// Generate spacing utilities with SCSS loops
+@each $prop-key, $prop-value in $spacing-properties {
+  @each $size-key, $size-value in $spacing-variants {
+    .u-#{$prop-key}-#{$size-key} {
+      @if type-of($prop-value) == 'list' {
+        // Handle multi-property cases (mx, my, px, py)
+        @each $property in $prop-value {
+          #{$property}: #{$size-value};
+        }
+      } @else {
+        #{$prop-value}: #{$size-value};
+      }
+    }
+  }
+}
 
-// Padding utilities
-.u-p-0 { padding: 0; }
-.u-p-tight { padding: $spacing-tight; }
-.u-p-normal { padding: $spacing-normal; }
-.u-p-large { padding: $spacing-large; }
-
-// Gap utilities
-.u-gap-tight { gap: $spacing-tight; }
-.u-gap-normal { gap: $spacing-normal; }
-.u-gap-large { gap: $spacing-large; }
+// Gap utilities (flexbox/grid)
+@each $size-key, $size-value in $spacing-variants {
+  .u-gap-#{$size-key} {
+    gap: #{$size-value};
+  }
+}
 
 // -----------------------------------------------------------------------------
 // TYPOGRAPHY UTILITIES
