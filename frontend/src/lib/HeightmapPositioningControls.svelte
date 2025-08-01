@@ -142,9 +142,6 @@
 					if (e.button === 1) { rotation = 0; e.preventDefault(); }
 				}}
 			/>
-			<div class="rotation-visual">
-				<div class="rotation-indicator" style="transform: rotate({rotation}deg)"></div>
-			</div>
 			<input 
 				type="number" 
 				step="0.01"
@@ -156,51 +153,40 @@
 	</div>
 </section>
 
-<style>
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
 	.control-grid {
-		display: grid;
-		grid-template-columns: 1fr 1.5fr;
-		gap: 0.5rem;
-		align-items: baseline;
-		margin-bottom: 0.4rem;
+		@include control-grid;
 	}
 
 	.range-control {
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-	}
-
-	.range-control input[type="range"] {
-		flex: 1;
-		margin: 0;
-		align-self: baseline;
-		margin-top: 0.25rem;
-		height: 16px;
+		@include range-control;
 	}
 
 	.number-input {
-		width: 60px;
-		padding: 0.125rem 0.25rem;
-		font-size: 11pt;
+		width: $number-input-width;
+		padding: $spacing-micro $spacing-tight;
+		font-size: $font-small;
 		margin: 0;
 		align-self: baseline;
-		margin-top: 0.25rem;
+		margin-top: $spacing-tight;
 	}
 
 	.control-grid label {
 		display: block;
 		margin: 0;
-		font-size: 11pt;
+		font-size: $font-small;
 		color: var(--pico-color);
 		align-self: baseline;
-		padding-top: 0.25rem;
+		padding-top: $spacing-tight;
 	}
 
 	.control-note {
 		grid-column: 1 / -1;
-		margin-top: -0.25rem;
-		margin-bottom: 0.25rem;
+		margin-top: -$spacing-tight;
+		margin-bottom: $spacing-tight;
+		margin-left: $spacing-tight; // Match control-grid left margin
 	}
 
 	.rotation-control {
@@ -219,106 +205,34 @@
 		margin-bottom: 0 !important;
 	}
 
-	.rotation-visual {
-		width: 32px;
-		height: 32px;
-		border: 2px solid var(--pico-muted-border-color);
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		position: relative;
-	}
 
-	.rotation-indicator {
-		width: 16px;
-		height: 2px;
-		background: var(--pico-primary-500);
-		transform-origin: center;
-		transition: transform 0.1s ease;
-	}
-
-	/* Hidden content utility */
+	// Hidden content utility
 	.hidden {
 		display: none;
 	}
 
-	/* Collapsible sections */
+	// Collapsible sections - use our mixin
 	.collapsible-header {
-		background: none;
-		border: none;
-		padding: 0;
-		margin: 0;
-		font: inherit;
-		color: inherit;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		user-select: none;
-		transition: color 0.2s;
-		width: 100%;
-		text-align: left;
-		font-size: 1rem;
-		font-weight: 600;
-	}
-
-	.collapsible-header:hover {
-		color: var(--pico-primary);
-	}
-
-	.collapsible-header:focus {
-		outline: 2px solid var(--pico-primary);
-		outline-offset: 2px;
+		@include collapsible-header;
+		
+		&:focus {
+			@include focus-outline;
+		}
 	}
 
 	.collapse-icon {
-		font-size: 10pt;
-		transition: transform 0.2s;
+		font-size: $font-micro;
+		transition: transform $transition-normal $easing-standard;
 		display: inline-block;
-		width: 12px;
+		width: 0.75rem; // 12px → rem
+		
+		&.expanded {
+			transform: rotate(90deg);
+		}
 	}
 
-	.collapse-icon.expanded {
-		transform: rotate(90deg);
-	}
-
-	/* Custom slider styling */
+	// Custom range styling - use our global mixin
 	input[type="range"] {
-		-webkit-appearance: none;
-		appearance: none;
-		height: 4px;
-		background: var(--pico-muted-border-color);
-		border-radius: 2px;
-		outline: none;
-	}
-
-	input[type="range"]::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		appearance: none;
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		background: var(--pico-primary);
-		cursor: pointer;
-		border: 2px solid var(--pico-background-color);
-		box-shadow: 0 0 0 1px var(--pico-muted-border-color);
-	}
-
-	input[type="range"]::-moz-range-thumb {
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		background: var(--pico-primary);
-		cursor: pointer;
-		border: 2px solid var(--pico-background-color);
-		box-shadow: 0 0 0 1px var(--pico-muted-border-color);
-	}
-
-	input[type="range"]::-moz-range-track {
-		height: 4px;
-		background: var(--pico-muted-border-color);
-		border-radius: 2px;
-		border: none;
+		@include custom-range-slider;
 	}
 </style>

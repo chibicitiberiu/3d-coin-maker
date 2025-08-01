@@ -1,0 +1,258 @@
+// =============================================================================
+// UTILITY CLASSES
+// =============================================================================
+
+@use './variables' as *;
+@use './mixins' as *;
+
+// -----------------------------------------------------------------------------
+// LAYOUT UTILITIES
+// -----------------------------------------------------------------------------
+
+.u-flex-center {
+  @include flex-center;
+}
+
+.u-flex-gap {
+  @include flex-gap;
+}
+
+.u-flex-column {
+  @include flex-column;
+}
+
+.u-flex-between {
+  @include flex-between;
+}
+
+// -----------------------------------------------------------------------------
+// SPACING UTILITIES
+// -----------------------------------------------------------------------------
+
+// Margin utilities
+.u-m-0 { margin: 0; }
+.u-m-tight { margin: $spacing-tight; }
+.u-m-normal { margin: $spacing-normal; }
+.u-m-large { margin: $spacing-large; }
+
+.u-mt-0 { margin-top: 0; }
+.u-mt-tight { margin-top: $spacing-tight; }
+.u-mt-normal { margin-top: $spacing-normal; }
+.u-mt-large { margin-top: $spacing-large; }
+
+.u-mb-0 { margin-bottom: 0; }
+.u-mb-tight { margin-bottom: $spacing-tight; }
+.u-mb-normal { margin-bottom: $spacing-normal; }
+.u-mb-large { margin-bottom: $spacing-large; }
+
+// Padding utilities
+.u-p-0 { padding: 0; }
+.u-p-tight { padding: $spacing-tight; }
+.u-p-normal { padding: $spacing-normal; }
+.u-p-large { padding: $spacing-large; }
+
+// Gap utilities
+.u-gap-tight { gap: $spacing-tight; }
+.u-gap-normal { gap: $spacing-normal; }
+.u-gap-large { gap: $spacing-large; }
+
+// -----------------------------------------------------------------------------
+// TYPOGRAPHY UTILITIES
+// -----------------------------------------------------------------------------
+
+.u-text-micro { font-size: $font-micro; }
+.u-text-small { font-size: $font-small; }
+.u-text-body { font-size: $font-body; }
+.u-text-normal { font-size: $font-normal; }
+.u-text-large { font-size: $font-large; }
+
+.u-weight-normal { font-weight: $weight-normal; }
+.u-weight-medium { font-weight: $weight-medium; }
+.u-weight-semibold { font-weight: $weight-semibold; }
+
+.u-text-center { text-align: center; }
+.u-text-left { text-align: left; }
+.u-text-right { text-align: right; }
+
+.u-text-truncate {
+  @include text-truncate;
+}
+
+// -----------------------------------------------------------------------------
+// VISIBILITY UTILITIES
+// -----------------------------------------------------------------------------
+
+.u-hidden {
+  display: none;
+}
+
+.u-invisible {
+  visibility: hidden;
+}
+
+.u-visually-hidden {
+  @include visually-hidden;
+}
+
+// -----------------------------------------------------------------------------
+// INTERACTION UTILITIES
+// -----------------------------------------------------------------------------
+
+.u-no-select {
+  user-select: none;
+}
+
+.u-pointer {
+  cursor: pointer;
+}
+
+.u-pointer-none {
+  pointer-events: none;
+}
+
+// -----------------------------------------------------------------------------
+// ANIMATION UTILITIES
+// -----------------------------------------------------------------------------
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -0.5rem, 0);
+  }
+  70% {
+    transform: translate3d(0, -0.25rem, 0);
+  }
+  90% {
+    transform: translate3d(0, -0.0625rem, 0);
+  }
+}
+
+.u-spin {
+  animation: spin 1s linear infinite;
+}
+
+.u-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.u-bounce {
+  animation: bounce 1s infinite;
+}
+
+// -----------------------------------------------------------------------------
+// BORDER UTILITIES
+// -----------------------------------------------------------------------------
+
+.u-border-thin {
+  border: $border-thin solid var(--pico-muted-border-color);
+}
+
+.u-border-normal {
+  border: $border-normal solid var(--pico-muted-border-color);
+}
+
+.u-border-primary {
+  border: $border-normal solid var(--pico-primary);
+}
+
+.u-border-error {
+  border: $border-normal solid $error-red;
+}
+
+.u-rounded-small {
+  border-radius: $radius-small;
+}
+
+.u-rounded-normal {
+  border-radius: $radius-normal;
+}
+
+.u-rounded-large {
+  border-radius: $radius-large;
+}
+
+.u-rounded-full {
+  border-radius: $radius-round;
+}
+
+// -----------------------------------------------------------------------------
+// SHADOW UTILITIES
+// -----------------------------------------------------------------------------
+
+.u-shadow-sm {
+  @include shadow-sm;
+}
+
+.u-shadow-md {
+  @include shadow-md;
+}
+
+.u-shadow-lg {
+  @include shadow-lg;
+}
+
+// -----------------------------------------------------------------------------
+// COLOR UTILITIES
+// -----------------------------------------------------------------------------
+
+.u-text-primary {
+  color: var(--pico-primary);
+}
+
+.u-text-muted {
+  color: var(--pico-muted-color);
+}
+
+.u-text-error {
+  color: $error-red;
+}
+
+.u-bg-primary {
+  background-color: var(--pico-primary-background);
+}
+
+.u-bg-muted {
+  background-color: var(--pico-muted-background-color);
+}
+
+.u-bg-error {
+  background-color: $error-bg;
+}
+
+// -----------------------------------------------------------------------------
+// RESPONSIVE UTILITIES
+// -----------------------------------------------------------------------------
+
+@include mobile-only {
+  .u-mobile-hidden {
+    display: none;
+  }
+}
+
+@include tablet-up {
+  .u-tablet-hidden {
+    display: none;
+  }
+}
+
+@include desktop-up {
+  .u-desktop-hidden {
+    display: none;
+  }
+}

@@ -22,86 +22,85 @@
 	</main>
 </div>
 
-<style>
-	/* Main App Layout */
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
+
+	// Main App Layout
 	.app-layout {
 		display: grid;
-		grid-template-columns: 30% 70%;
-		gap: 1rem;
-		height: 100vh;
-		padding: 1rem;
+		grid-template-columns: $app-grid-columns; // 30% 70%
+		gap: $spacing-large;
+		height: calc(100vh - var(--header-height) - #{$spacing-tight}); // Subtract header height + margin
+		padding: $spacing-large;
 		box-sizing: border-box;
 	}
 
-	/* Left Panel - Controls */
+	// Left Panel - Controls
 	.controls-panel {
-		display: flex;
-		flex-direction: column;
+		@include flex-column;
 		background: var(--pico-card-background-color);
-		border: 1px solid var(--pico-card-border-color);
+		border: $border-thin solid var(--pico-card-border-color);
 		border-radius: var(--pico-border-radius);
 		overflow: hidden;
 		height: fit-content;
-		max-height: calc(100vh - 2rem);
+		max-height: calc(100vh - var(--header-height) - #{$spacing-xxl} - #{$spacing-tight}); // Header + padding + margin
 	}
 
 	.controls-header {
 		background: var(--pico-primary-background);
 		color: var(--pico-primary-inverse);
-		padding: 0.75rem 1rem;
-		border-bottom: 1px solid var(--pico-card-border-color);
-	}
+		padding: $spacing-medium $spacing-large;
+		border-bottom: $border-thin solid var(--pico-card-border-color);
 
-	.controls-header h2 {
-		margin: 0;
-		font-size: 1rem;
-		font-weight: 600;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
+		h2 {
+			margin: 0;
+			font-size: $font-normal;
+			font-weight: $weight-semibold;
+			@include flex-gap($spacing-normal);
+		}
 	}
 
 	.controls-content {
 		flex: 1;
 		overflow-y: auto;
-		padding: 0;
+		padding: 0 $spacing-normal; // Smaller horizontal margins for controls
 	}
 
 	.controls-footer {
-		border-top: 1px solid var(--pico-card-border-color);
+		border-top: $border-thin solid var(--pico-card-border-color);
 		background: var(--pico-card-background-color);
-		padding: 1rem;
+		padding: $spacing-large;
 	}
 
-	/* Right Panel - Viewer */
+	// Right Panel - Viewer
 	.viewer-panel {
-		display: flex;
-		flex-direction: column;
+		@include flex-column;
 		background: var(--pico-card-background-color);
-		border: 1px solid var(--pico-card-border-color);
+		border: $border-thin solid var(--pico-card-border-color);
 		border-radius: var(--pico-border-radius);
 		overflow: hidden;
-		height: calc(100vh - 2rem);
+		height: calc(100vh - var(--header-height) - #{$spacing-xxl} - #{$spacing-tight}); // Header + padding + margin
 	}
 
-	/* Mobile Responsiveness */
-	@media (max-width: 768px) {
+	// Mobile Responsiveness
+	@include mobile-only {
 		.app-layout {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto 1fr;
 			height: auto;
-			gap: 0.5rem;
+			gap: $spacing-normal;
 		}
 
 		.controls-panel {
 			height: auto;
 			max-height: none;
-			padding: 0.5rem;
-			font-size: 0.8rem;
+			padding: $spacing-normal;
+			font-size: $font-small;
 		}
 
 		.viewer-panel {
-			min-height: 400px;
+			min-height: 25rem; // 400px → rem
 		}
 	}
 </style>

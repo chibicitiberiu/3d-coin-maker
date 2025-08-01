@@ -163,22 +163,23 @@
 	{/if}
 </div>
 
-<style>
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
+
 	.tab-content {
 		flex: 1;
-		padding: 0.25rem;
+		padding: $spacing-tight;
 		overflow: hidden;
 		background: var(--pico-card-background-color);
-		display: flex;
-		flex-direction: column;
+		@include flex-column;
 	}
 
 	.image-viewer,
 	.prepared-image-viewer,
 	.stl-viewer {
 		flex: 1;
-		display: flex;
-		flex-direction: column;
+		@include flex-column;
 		overflow: hidden;
 	}
 
@@ -195,31 +196,24 @@
 	}
 
 	.placeholder-content {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		color: var(--pico-muted-color);
-		padding: 2rem;
+		@include placeholder-content;
+		padding: $spacing-xxl;
 		flex: 1;
 	}
 
 	.placeholder-container {
 		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		@include flex-center;
 	}
 
 	.placeholder-content h3 {
-		margin: 1rem 0 0.5rem;
+		margin: $spacing-large 0 $spacing-normal;
 		color: var(--pico-color);
 	}
 
 	.placeholder-content p {
 		margin: 0;
-		font-size: 0.875rem;
+		font-size: $font-body;
 	}
 
 	.placeholder-content small {
@@ -230,17 +224,17 @@
 	/* Progress bar styles */
 	.progress-container {
 		width: 100%;
-		max-width: 300px;
-		margin: 1rem 0;
+		max-width: 18.75rem; // 300px → rem
+		margin: $spacing-large 0;
 	}
 
 	.progress-bar {
 		width: 100%;
-		height: 8px;
+		height: 0.5rem; // 8px → rem
 		background: var(--pico-muted-background-color);
 		border-radius: 4px;
 		overflow: hidden;
-		margin-bottom: 0.5rem;
+		margin-bottom: $spacing-normal;
 	}
 
 	.progress-fill {
@@ -250,7 +244,7 @@
 	}
 
 	.progress-text {
-		font-size: 0.875rem;
+		font-size: $font-body;
 		color: var(--pico-color);
 		margin: 0;
 	}
@@ -260,17 +254,17 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 8px 12px;
+		padding: 0.5rem 0.75rem; // 8px 12px → rem
 		background: var(--pico-muted-background-color);
 		border-top: 1px solid var(--pico-muted-border-color);
-		font-size: 12px;
+		font-size: $font-small;
 		color: var(--pico-muted-color);
-		min-height: 36px;
+		min-height: 2.25rem; // 36px → rem
 	}
 
 	.status-info {
 		display: flex;
-		gap: 16px;
+		gap: $spacing-large;
 		align-items: center;
 	}
 
@@ -281,15 +275,15 @@
 
 	.zoom-info, .position-info {
 		font-family: monospace;
-		font-size: 11px;
+		font-size: $font-small;
 	}
 
 	.reset-view-btn {
 		background: none;
 		border: 1px solid var(--pico-muted-border-color);
 		color: var(--pico-muted-color);
-		padding: 4px 8px;
-		font-size: 11px;
+		padding: $spacing-tight 0.5rem; // 4px 8px → rem
+		font-size: $font-small;
 		border-radius: 3px;
 		cursor: pointer;
 	}
@@ -305,25 +299,25 @@
 	}
 
 	.error-icon {
-		color: #f56565;
-		margin-bottom: 0.5rem;
+		color: $error-red;
+		margin-bottom: $spacing-normal;
 	}
 
 	.error-content h3 {
-		color: #c53030;
-		margin: 0.5rem 0 0.25rem;
+		color: $error-dark-red;
+		margin: $spacing-normal 0 $spacing-tight;
 	}
 
 	.error-message {
-		color: #742a2a;
+		color: $error-darker-red;
 		font-weight: 500;
-		margin: 0.5rem 0;
+		margin: $spacing-normal 0;
 		white-space: pre-wrap;
 		word-break: break-word;
 	}
 
 	.error-content small {
-		color: #a0a0a0;
+		color: var(--pico-muted-color); // Replace hardcoded gray
 		font-style: italic;
 	}
 

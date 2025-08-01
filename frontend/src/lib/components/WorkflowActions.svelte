@@ -101,24 +101,25 @@
 	</button>
 </div>
 
-<style>
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
+
 	.actions {
-		display: flex;
-		gap: 0.5rem;
+		@include flex-gap($spacing-normal);
 		flex-wrap: wrap;
 	}
 
 	.actions button {
 		flex: 1;
-		min-width: 120px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.25rem;
-		font-size: 0.875rem;
-		padding: 0.5rem 1rem;
+		min-width: 7.5rem; // 120px → rem
+		@include flex-center;
+		gap: $spacing-tight;
+		font-size: $font-small;
+		padding: $spacing-normal $spacing-large;
 	}
 
+	// Spin animation - define it directly since @extend doesn't work across components
 	:global(.spin) {
 		animation: spin 1s linear infinite;
 	}

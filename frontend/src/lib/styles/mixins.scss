@@ -1,0 +1,249 @@
+// =============================================================================
+// REUSABLE MIXINS
+// =============================================================================
+
+@use './variables' as *;
+
+// -----------------------------------------------------------------------------
+// LAYOUT MIXINS
+// -----------------------------------------------------------------------------
+
+// Control grid layout (used 4x across components)
+@mixin control-grid {
+  display: grid;
+  grid-template-columns: $control-grid-columns;
+  gap: $spacing-normal;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+  margin-left: $spacing-tight; // Add small left margin for visual separation
+}
+
+// Flex patterns
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-gap($gap: $spacing-normal) {
+  display: flex;
+  gap: $gap;
+  align-items: center;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+@mixin flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+// -----------------------------------------------------------------------------
+// COMPONENT MIXINS
+// -----------------------------------------------------------------------------
+
+// Range control styling (used 4x)
+@mixin range-control {
+  @include flex-gap($spacing-normal);
+  
+  input[type="range"] {
+    flex: 1;
+    margin: 0;
+    align-self: baseline;
+    margin-top: $spacing-tight;
+    height: $control-height;
+    
+    @include custom-range-slider;
+  }
+}
+
+// Custom range slider appearance (used 4x)
+@mixin custom-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: $track-height;
+  background: var(--pico-muted-border-color);
+  border-radius: $radius-small;
+  outline: none;
+  
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: $thumb-size;
+    height: $thumb-size;
+    border-radius: $radius-round;
+    background: var(--pico-primary);
+    cursor: pointer;
+    border: $border-normal solid var(--pico-background-color);
+    box-shadow: 0 0 0 1px var(--pico-muted-border-color);
+    transition: background-color $transition-normal $easing-standard;
+  }
+  
+  &::-moz-range-thumb {
+    width: $thumb-size;
+    height: $thumb-size;
+    border-radius: $radius-round;
+    background: var(--pico-primary);
+    cursor: pointer;
+    border: $border-normal solid var(--pico-background-color);
+    box-shadow: 0 0 0 1px var(--pico-muted-border-color);
+    transition: background-color $transition-normal $easing-standard;
+  }
+  
+  &:hover::-webkit-slider-thumb {
+    background: var(--pico-primary-hover);
+  }
+  
+  &:hover::-moz-range-thumb {
+    background: var(--pico-primary-hover);
+  }
+}
+
+// Collapsible header styling (used 4x)
+@mixin collapsible-header {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  @include flex-gap($spacing-small);
+  user-select: none;
+  transition: color $transition-normal $easing-standard;
+  width: 100%;
+  text-align: left;
+  font-size: $font-normal;
+  font-weight: $weight-semibold;
+  
+  &:hover {
+    color: var(--pico-primary);
+  }
+}
+
+// Button reset (used 3x)
+@mixin button-reset {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: color $transition-normal $easing-standard;
+  
+  &:hover {
+    color: var(--pico-primary);
+  }
+}
+
+// Status bar styling (used 2x)
+@mixin status-bar {
+  @include flex-between;
+  padding: 0.5rem 0.75rem;
+  background: var(--pico-muted-background-color);
+  border-top: $border-thin solid var(--pico-muted-border-color);
+  font-size: $font-small;
+  color: var(--pico-muted-color);
+}
+
+// Placeholder content (used 4x)
+@mixin placeholder-content {
+  @include flex-center;
+  @include flex-column;
+  text-align: center;
+  color: var(--pico-muted-color);
+  padding: $spacing-xxl;
+  gap: $spacing-normal;
+}
+
+// Progress bar styling (used 2x)
+@mixin progress-bar {
+  width: 100%;
+  height: 0.5rem;
+  background: var(--pico-muted-background-color);
+  border-radius: $radius-normal;
+  overflow: hidden;
+  
+  .progress-fill {
+    height: 100%;
+    background: var(--pico-primary);
+    border-radius: inherit;
+    transition: width $transition-normal $easing-standard;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// UTILITY MIXINS
+// -----------------------------------------------------------------------------
+
+// Truncate text with ellipsis
+@mixin text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Hide visually but keep for screen readers
+@mixin visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+// Focus outline for accessibility
+@mixin focus-outline {
+  outline: $border-normal solid var(--pico-primary);
+  outline-offset: $border-normal;
+}
+
+// Box shadow variations
+@mixin shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+@mixin shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+@mixin shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+// -----------------------------------------------------------------------------
+// RESPONSIVE MIXINS
+// -----------------------------------------------------------------------------
+
+@mixin mobile-only {
+  @media (max-width: #{$breakpoint-sm - 1px}) {
+    @content;
+  }
+}
+
+@mixin tablet-up {
+  @media (min-width: $breakpoint-md) {
+    @content;
+  }
+}
+
+@mixin desktop-up {
+  @media (min-width: $breakpoint-lg) {
+    @content;
+  }
+}
+
+@mixin large-desktop-up {
+  @media (min-width: $breakpoint-xl) {
+    @content;
+  }
+}

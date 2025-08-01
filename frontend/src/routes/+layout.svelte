@@ -1,5 +1,5 @@
 <script lang="ts">
-	import '@picocss/pico';
+	import '$lib/styles/index.scss';
 	import { page } from '$app/stores';
 </script>
 
@@ -28,43 +28,47 @@
 	<slot />
 </main>
 
-<style>
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
+
 	:root {
 		--header-bg-color: color-mix(in srgb, var(--pico-primary-background) 20%, var(--pico-background-color));
+		--header-height: 3.5rem; // Approximate header height
 	}
 
 	header.main-header {
-		border-bottom: 1px solid var(--pico-muted-border-color);
-		margin-bottom: 0.25rem;
+		border-bottom: $border-thin solid var(--pico-muted-border-color);
+		margin-bottom: $spacing-tight;
 		padding: 0;
 		background-color: var(--header-bg-color);
 	}
 	
 	nav {
-		padding: 0.375rem 1rem;
-		font-size: 0.85rem;
+		padding: $spacing-small $spacing-large;
+		font-size: 11pt; // Standardized to pt
 	}
 	
 	.active {
 		color: var(--pico-primary-500) !important;
-		font-weight: 600;
+		font-weight: $weight-semibold;
 	}
 
 	nav a {
 		color: var(--pico-color) !important;
-		font-size: 0.8rem;
+		font-size: $font-small;
 	}
 
 	nav a strong {
-		font-size: 0.9rem;
+		font-size: $font-body;
 	}
 
 	nav li {
-		padding: 0.25rem 0.5rem;
+		padding: $spacing-tight $spacing-normal;
 	}
 	
 	main {
-		min-height: calc(100vh - 80px);
-		padding: 0 0.5rem;
+		min-height: calc(100vh - var(--header-height) - #{$spacing-tight}); // Full height minus header and margin
+		padding: 0 $spacing-normal;
 	}
 </style>

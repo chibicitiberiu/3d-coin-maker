@@ -70,30 +70,32 @@
 	</footer>
 </article>
 
-<style>
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
+
 	article {
-		max-width: 800px;
+		max-width: 50rem; // 800px → rem
 		margin: 0 auto;
 	}
 	
 	section {
-		margin: 2rem 0;
+		margin: $spacing-xxl 0; // 2rem → design system variable
 	}
 	
 	.grid {
-		margin-top: 1rem;
+		margin-top: $spacing-large; // 1rem → design system variable
 	}
 	
 	h4 {
-		margin-bottom: 0.5rem;
-		display: flex;
-		align-items: center;
+		margin-bottom: $spacing-normal; // 0.5rem → design system variable
+		@include flex-align; // display flex + align-items center
 	}
 	
 	footer {
-		margin-top: 3rem;
-		padding-top: 2rem;
-		border-top: 1px solid var(--pico-muted-border-color);
+		margin-top: $spacing-xxxl; // 3rem → design system variable
+		padding-top: $spacing-xxl; // 2rem → design system variable
+		border-top: $border-thin solid var(--pico-muted-border-color);
 		text-align: center;
 	}
 </style>

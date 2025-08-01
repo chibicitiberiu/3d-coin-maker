@@ -1,0 +1,112 @@
+// =============================================================================
+// DESIGN SYSTEM VARIABLES
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// SPACING SCALE (rem-based for scalability)
+// -----------------------------------------------------------------------------
+$spacing-micro: 0.125rem;    // 2px  - Micro adjustments
+$spacing-tight: 0.25rem;     // 4px  - Tight spacing (used 28x)
+$spacing-small: 0.375rem;    // 6px  - Small gaps (used 18x)
+$spacing-normal: 0.5rem;     // 8px  - Primary spacing (used 38x)
+$spacing-medium: 0.75rem;    // 12px - Medium spacing
+$spacing-large: 1rem;        // 16px - Standard spacing (used 24x)
+$spacing-xl: 1.5rem;         // 24px - Large spacing
+$spacing-xxl: 2rem;          // 32px - Extra large spacing
+
+// -----------------------------------------------------------------------------
+// TYPOGRAPHY SCALE (pt-based for fonts)
+// -----------------------------------------------------------------------------
+$font-micro: 10pt;           // Micro text
+$font-small: 11pt;           // Small controls (used 16x)
+$font-body: 12pt;            // Body text
+$font-normal: 14pt;          // Standard text
+$font-large: 16pt;           // Large text
+
+// Font weights
+$weight-normal: 400;
+$weight-medium: 500;
+$weight-semibold: 600;
+
+// Line heights
+$line-height-tight: 1.2;
+$line-height-normal: 1.4;
+$line-height-relaxed: 1.6;
+
+// -----------------------------------------------------------------------------
+// DIMENSIONS (rem-based, px only for precise graphics)
+// -----------------------------------------------------------------------------
+$control-height: 1rem;           // 16px - Standard control height
+$button-size: 1.75rem;           // 28px - Square button size
+$number-input-width: 3.75rem;    // 60px - Number input width (used 4x)
+$thumb-size: 0.875rem;           // 14px - Range slider thumb
+$track-height: 0.25rem;          // 4px - Range slider track
+
+// Border widths (keep in px for precision)
+$border-thin: 1px;
+$border-normal: 2px;
+
+// Border radius
+$radius-small: 0.125rem;     // 2px
+$radius-normal: 0.25rem;     // 4px
+$radius-large: 0.5rem;       // 8px
+$radius-round: 50%;
+
+// -----------------------------------------------------------------------------
+// GRID & LAYOUT
+// -----------------------------------------------------------------------------
+$control-grid-columns: 1fr 1.5fr;    // Standard control grid (used 4x)
+$app-grid-columns: 30% 70%;          // Main app layout
+$container-max-width: 80rem;         // 1280px
+
+// -----------------------------------------------------------------------------
+// COLORS (Custom colors + PicoCSS integration)
+// -----------------------------------------------------------------------------
+
+// Custom brand colors
+$primary-blue: #0172ad;          // Primary blue (used 3x)
+$gold-bronze: #B8860B;           // Coin gold color
+$light-gray-bg: #f8f9fa;         // Light background (used 3x)
+
+// Error color palette
+$error-red: #f56565;             // Error text/border
+$error-dark-red: #c53030;        // Error hover state
+$error-darker-red: #742a2a;      // Error active state
+$error-bg: #fed7d7;              // Error background
+
+// Utility colors
+$semi-white: rgba(255, 255, 255, 0.9);   // Semi-transparent overlay
+$grid-line: rgba(0, 0, 0, 0.1);          // Canvas grid lines
+$axis-line: rgba(64, 64, 64, 0.7);       // Canvas axis lines
+
+// -----------------------------------------------------------------------------
+// Z-INDEX SCALE
+// -----------------------------------------------------------------------------
+$z-index-dropdown: 1000;
+$z-index-sticky: 1020;
+$z-index-fixed: 1030;
+$z-index-modal-backdrop: 1040;
+$z-index-modal: 1050;
+$z-index-popover: 1060;
+$z-index-tooltip: 1070;
+
+// -----------------------------------------------------------------------------
+// TRANSITION & ANIMATION
+// -----------------------------------------------------------------------------
+$transition-fast: 0.15s;
+$transition-normal: 0.2s;
+$transition-slow: 0.3s;
+
+$easing-standard: ease;
+$easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+$easing-enter: cubic-bezier(0, 0, 0.2, 1);
+$easing-exit: cubic-bezier(0.4, 0, 1, 1);
+
+// -----------------------------------------------------------------------------
+// BREAKPOINTS (for responsive design)
+// -----------------------------------------------------------------------------
+$breakpoint-sm: 640px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
+$breakpoint-xxl: 1536px;

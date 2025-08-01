@@ -32,22 +32,25 @@
 	{/each}
 </nav>
 
-<style>
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
+
 	.tabs {
 		display: flex;
 		background: var(--pico-background-color);
-		border-bottom: 1px solid var(--pico-muted-border-color);
+		border-bottom: $border-thin solid var(--pico-muted-border-color);
 	}
 
 	.tab {
 		flex: 1;
 		background: transparent !important;
 		border: none;
-		padding: 0.5rem;
+		padding: $spacing-normal;
 		cursor: pointer;
-		transition: all 0.2s;
+		transition: all $transition-normal $easing-standard;
 		border-bottom: 3px solid transparent;
-		font-size: 0.8rem;
+		font-size: $font-small;
 		color: var(--pico-color) !important;
 		--pico-primary-inverse: var(--pico-color);
 	}
@@ -63,7 +66,7 @@
 		cursor: not-allowed;
 	}
 
-	/* Force override Pico CSS button styling for tabs */
+	// Force override Pico CSS button styling for tabs
 	.tabs button.tab {
 		color: var(--pico-color) !important;
 		background-color: transparent !important;
@@ -85,7 +88,7 @@
 	.tab.active {
 		background: var(--pico-card-background-color) !important;
 		border-bottom-color: var(--pico-primary-500);
-		font-weight: 600;
+		font-weight: $weight-semibold;
 		color: var(--pico-color) !important;
 		--pico-primary-inverse: var(--pico-color);
 	}

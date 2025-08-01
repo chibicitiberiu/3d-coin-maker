@@ -115,7 +115,7 @@
 	on:dragleave={handleDragLeave}
 >
 	<div class="control-grid">
-		<label><Upload size={14} /> Upload Image</label>
+		<label>Upload Image</label>
 		<div class="upload-control">
 			<input
 				type="file"
@@ -145,50 +145,43 @@
 	</div>
 </section>
 
-<style>
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
+
 	.upload-section {
-		transition: background-color 0.2s;
+		transition: background-color $transition-normal $easing-standard;
 	}
 
 	.control-grid {
-		display: grid;
-		grid-template-columns: 1fr 1.5fr;
-		gap: 0.5rem;
-		align-items: baseline;
-		margin-bottom: 0.4rem;
+		@include control-grid;
 	}
 
 	.upload-control {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
+		@include flex-gap($spacing-normal);
 		flex-wrap: wrap;
 	}
 
 	.upload-btn {
 		padding: 0.2rem 0.4rem;
-		font-size: 10pt;
-		min-width: 55px;
+		font-size: $font-micro;
+		min-width: 3.4375rem; // 55px → rem
 		margin: 0;
 	}
 
 	.upload-status {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		font-size: 9pt;
+		@include flex-gap($spacing-tight);
+		font-size: 9pt; // Keep smaller than $font-micro for status text
 		color: var(--pico-muted-color);
 		flex: 1;
 		min-width: 0;
 	}
 
 	.upload-status span {
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		@include text-truncate;
 	}
 
-	/* Drop zone styling */
+	// Drop zone styling
 	.upload-section.drag-over {
 		background-color: var(--pico-primary-background);
 	}
@@ -196,9 +189,9 @@
 	.control-grid label {
 		display: block;
 		margin: 0;
-		font-size: 11pt;
+		font-size: $font-small;
 		color: var(--pico-color);
 		align-self: baseline;
-		padding-top: 0.25rem;
+		padding-top: $spacing-tight;
 	}
 </style>

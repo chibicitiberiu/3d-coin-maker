@@ -559,14 +559,15 @@
 	></canvas>
 </div>
 
-<style>
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
+
 	.prepared-canvas-container {
 		position: relative;
 		width: 100%;
 		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		@include flex-center;
 		overflow: hidden;
 	}
 	
@@ -576,12 +577,12 @@
 		cursor: grab;
 		display: block;
 		position: relative;
-		border: 1px solid var(--pico-muted-border-color);
+		border: $border-thin solid var(--pico-muted-border-color);
 		border-radius: var(--pico-border-radius);
-		background: #f8f9fa;
+		background: $light-gray-bg;
 		z-index: 1;
-		margin-left: 30px;
-		margin-top: 30px;
+		margin-left: 1.875rem; // 30px → rem
+		margin-top: 1.875rem; // 30px → rem
 	}
 	
 	.prepared-canvas:active {

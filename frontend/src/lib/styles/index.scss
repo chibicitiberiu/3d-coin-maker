@@ -1,0 +1,121 @@
+// =============================================================================
+// MAIN STYLES ENTRY POINT
+// =============================================================================
+
+// Import our design system first (must come before @import)
+@use './variables' as *;
+@use './mixins' as *;
+@use './utilities';
+
+// Import PicoCSS as the foundation
+@import '@picocss/pico/scss/pico';
+
+// -----------------------------------------------------------------------------
+// GLOBAL OVERRIDES & CUSTOMIZATIONS
+// -----------------------------------------------------------------------------
+
+// Customize PicoCSS variables to match our design system
+:root {
+  // Override PicoCSS spacing to align with our system
+  --pico-spacing: #{$spacing-normal};
+  
+  // Custom color additions (keeping PicoCSS theme integration)
+  --coin-primary-blue: #{$primary-blue};
+  --coin-gold-bronze: #{$gold-bronze};
+  --coin-light-bg: #{$light-gray-bg};
+  
+  // Error color palette
+  --coin-error: #{$error-red};
+  --coin-error-dark: #{$error-dark-red};
+  --coin-error-bg: #{$error-bg};
+  
+  // Utility colors
+  --coin-semi-white: #{$semi-white};
+  --coin-grid-line: #{$grid-line};
+  --coin-axis-line: #{$axis-line};
+  
+  // Typography customizations
+  --pico-font-size: #{$font-body};
+  --pico-line-height: #{$line-height-normal};
+  
+  // Transition timing
+  --pico-transition: #{$transition-normal};
+}
+
+// -----------------------------------------------------------------------------
+// COMPONENT-SPECIFIC GLOBAL STYLES
+// -----------------------------------------------------------------------------
+
+// Ensure consistent box-sizing
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+// Better default focus styles for accessibility
+:focus-visible {
+  @include focus-outline;
+}
+
+// Remove default button focus styles when using custom focus
+button:focus {
+  outline: none;
+}
+
+button:focus-visible {
+  @include focus-outline;
+}
+
+// Improve readability for small text
+small {
+  font-size: $font-small;
+  line-height: $line-height-normal;
+}
+
+// -----------------------------------------------------------------------------
+// RANGE INPUT GLOBAL STYLING
+// -----------------------------------------------------------------------------
+
+// Apply our custom range styling globally for consistency
+input[type="range"] {
+  @include custom-range-slider;
+}
+
+// -----------------------------------------------------------------------------
+// CANVAS & SVG OPTIMIZATIONS
+// -----------------------------------------------------------------------------
+
+canvas {
+  // Improve canvas rendering performance
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+// Ensure SVG icons scale properly
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+// -----------------------------------------------------------------------------
+// PRINT STYLES
+// -----------------------------------------------------------------------------
+
+@media print {
+  // Hide interactive elements when printing
+  .u-no-print,
+  button,
+  input[type="range"],
+  .tabs {
+    display: none !important;
+  }
+  
+  // Ensure good contrast in print
+  * {
+    color: black !important;
+    background: white !important;
+  }
+}

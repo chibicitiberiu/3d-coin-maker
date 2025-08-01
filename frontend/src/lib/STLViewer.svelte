@@ -397,12 +397,15 @@
 	</div>
 </div>
 
-<style>
+<style lang="scss">
+	@use '$lib/styles/variables' as *;
+	@use '$lib/styles/mixins' as *;
+
 	.stl-viewer-container {
 		position: relative;
 		width: 100%;
 		height: 100%;
-		min-height: 400px;
+		min-height: 25rem; // 400px → rem
 	}
 
 	.viewer-canvas {
@@ -414,10 +417,9 @@
 
 	.viewer-controls {
 		position: absolute;
-		bottom: 0.75rem;
-		right: 0.75rem;
-		display: flex;
-		gap: 0.375rem;
+		bottom: $spacing-medium;
+		right: $spacing-medium;
+		@include flex-gap($spacing-small);
 		background: rgba(255, 255, 255, 0.9);
 		backdrop-filter: blur(4px);
 		padding: 0.375rem;
