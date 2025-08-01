@@ -1,39 +1,57 @@
 # Multi-stage build for production optimization
-FROM python:3.11-slim as builder
 
-# Install build dependencies
+# Stage 1: Build HMM binary
+FROM python:3.11-slim AS hmm-builder
+
+# Install build dependencies for HMM
 RUN apt-get update && apt-get install -y \
+    git \
     build-essential \
+    cmake \
+    make \
+    pkg-config \
+    libglm-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
+# Build HMM from source
+RUN cd /tmp && \
+    git clone https://github.com/fogleman/hmm.git && \
+    cd hmm && \
+    make && \
+    cp hmm /usr/local/bin/hmm
+
+# Stage 2: Production runtime
+FROM python:3.11-slim
+
+# Install build dependencies temporarily for Python packages
+RUN apt-get update && apt-get install -y \
+    curl \
+    dumb-init \
+    build-essential \
+    libpython3-dev \
+    python3-distutils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy HMM binary from hmm-builder stage
+COPY --from=hmm-builder /usr/local/bin/hmm /usr/local/bin/hmm
+
+# Install Poetry temporarily
 RUN pip install poetry
 
 # Set working directory
 WORKDIR /app
 
-# Copy poetry files
+# Copy poetry files and install dependencies
 COPY pyproject.toml poetry.lock ./
-
-# Configure poetry and create wheel packages
 RUN poetry config virtualenvs.create false \
-    && poetry build
+    && poetry install --only=main
 
-# Production stage
-FROM python:3.11-slim
-
-# Install system dependencies including OpenSCAD
-RUN apt-get update && apt-get install -y \
-    openscad \
-    curl \
-    dumb-init \
+# Remove build dependencies to reduce image size
+RUN apt-get remove -y build-essential libpython3-dev python3-distutils \
+    && apt-get autoremove -y \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Copy wheel from builder stage and install
-COPY --from=builder /app/dist/*.whl /tmp/
-RUN pip install --no-cache-dir /tmp/*.whl \
-    && rm -rf /tmp/*.whl
+    && pip uninstall -y poetry
 
 # Install production dependencies
 RUN pip install --no-cache-dir \
@@ -55,8 +73,6 @@ RUN mkdir -p /app/temp /app/data /app/static /app/logs \
 ENV DJANGO_SETTINGS_MODULE=coin_maker.settings
 RUN python manage.py collectstatic --noinput --clear
 
-# Verify OpenSCAD is installed
-RUN openscad --version
 
 # Create non-root user for security
 RUN groupadd -r app && useradd -r -g app -d /app -s /bin/bash app \

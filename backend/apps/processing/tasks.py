@@ -82,24 +82,25 @@ def generate_stl_task(
         from core.containers.application import container
         coin_service = container.coin_generation_service()
 
-        # Update task state
-        self.update_state(
-            state='PROCESSING',
-            meta={'step': 'stl_generation', 'progress': 10}
-        )
+        # Create progress callback that updates task state
+        def progress_callback(progress: int, step: str):
+            self.update_state(
+                state='PROCESSING',
+                meta={'step': step, 'progress': progress}
+            )
 
-        # Generate STL
-        success, error_msg = coin_service.generate_stl(generation_id, coin_parameters)
+        # Initial progress
+        progress_callback(10, 'stl_generation_starting')
+
+        # Generate STL with progress callback
+        success, error_msg = coin_service.generate_stl(generation_id, coin_parameters, progress_callback)
 
         if not success:
             # Raise a non-retryable error for business logic failures
             raise ProcessingError(error_msg)
 
-        # Update progress
-        self.update_state(
-            state='PROCESSING',
-            meta={'step': 'stl_generated', 'progress': 100}
-        )
+        # Final progress
+        progress_callback(100, 'stl_generated')
 
         return {
             'success': True,

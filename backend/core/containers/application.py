@@ -6,7 +6,6 @@ from core.services.coin_generation_service import CoinGenerationService
 from core.services.file_storage import FileSystemStorage
 from core.services.hmm_manifold_generator import HMMManifoldGenerator
 from core.services.image_processor import PILImageProcessor
-from core.services.openscad_generator import OpenSCADGenerator
 from core.services.redis_rate_limiter import RedisRateLimiter
 
 
@@ -31,9 +30,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
         PILImageProcessor
     )
 
-    # STL Generator factory - selects generator based on configuration
+    # STL Generator - using HMM + Manifold3D for superior performance
     stl_generator = providers.Factory(
-        lambda: HMMManifoldGenerator() if settings.MESH_GENERATOR == 'hmm_manifold' else OpenSCADGenerator()
+        HMMManifoldGenerator
     )
 
     rate_limiter = providers.Singleton(

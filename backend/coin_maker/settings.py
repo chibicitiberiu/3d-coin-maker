@@ -172,13 +172,7 @@ MAX_CONCURRENT_PER_IP = config('MAX_CONCURRENT_PER_IP', default=5, cast=int)
 RATE_LIMIT_REDIS_PREFIX = config('RATE_LIMIT_REDIS_PREFIX', default='rate_limit')
 
 # Mesh Generation Settings
-MESH_GENERATOR = config('MESH_GENERATOR', default='hmm_manifold')  # 'openscad' or 'hmm_manifold'
-
-# OpenSCAD Settings (used when MESH_GENERATOR='openscad')
-OPENSCAD_TIMEOUT = config('OPENSCAD_TIMEOUT', default=120, cast=int)
-OPENSCAD_BINARY = config('OPENSCAD_BINARY', default='openscad')
-
-# HMM Settings (used when MESH_GENERATOR='hmm_manifold')
+# Using HMM + Manifold3D for superior performance (100x faster than OpenSCAD)
 HMM_TIMEOUT = config('HMM_TIMEOUT', default=120, cast=int)
 
 # Cleanup Settings

@@ -275,19 +275,6 @@ def health_check(request: Request) -> Response:
         'timestamp': time.time()
     }
 
-    # Check OpenSCAD
-    try:
-        result = subprocess.run(['openscad', '--version'],
-                              capture_output=True, text=True, timeout=5)
-        status_info['services']['openscad'] = {
-            'status': 'available' if result.returncode == 0 else 'error',
-            'version': result.stdout.strip() if result.returncode == 0 else result.stderr.strip()
-        }
-    except Exception as e:
-        status_info['services']['openscad'] = {
-            'status': 'error',
-            'error': str(e)
-        }
 
     # Check Redis connection
     try:

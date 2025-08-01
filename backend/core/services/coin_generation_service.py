@@ -85,7 +85,7 @@ class CoinGenerationService:
         except Exception as e:
             return False, f"Error processing image: {str(e)}"
 
-    def generate_stl(self, generation_id: str, coin_parameters: dict[str, Any]) -> tuple[bool, str | None]:
+    def generate_stl(self, generation_id: str, coin_parameters: dict[str, Any], progress_callback=None) -> tuple[bool, str | None]:
         """
         Generate STL file from processed image.
         Returns: (success, error_message)
@@ -104,7 +104,7 @@ class CoinGenerationService:
             stl_filename = "coin.stl"
             stl_path = self.file_storage.temp_dir / generation_id / stl_filename
 
-            success, error_message = self.stl_generator.generate_stl(heightmap_path, coin_parameters, stl_path)
+            success, error_message = self.stl_generator.generate_stl(heightmap_path, coin_parameters, stl_path, progress_callback)
 
             if not success:
                 # Return the specific error message from the STL generator

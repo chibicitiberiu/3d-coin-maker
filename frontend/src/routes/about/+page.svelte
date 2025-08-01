@@ -39,7 +39,7 @@
 			<li><strong>Frontend:</strong> SvelteKit + TypeScript</li>
 			<li><strong>Backend:</strong> Django + Django REST Framework</li>
 			<li><strong>Image Processing:</strong> Photon WASM</li>
-			<li><strong>3D Generation:</strong> OpenSCAD</li>
+			<li><strong>3D Generation:</strong> HMM + Manifold3D</li>
 			<li><strong>Deployment:</strong> Docker Compose</li>
 		</ul>
 	</section>

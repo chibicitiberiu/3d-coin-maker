@@ -1,28 +1,36 @@
-FROM python:3.11-slim
+# Multi-stage build for development
 
-# Install system dependencies including OpenSCAD, hmm, and manifold3d requirements
+# Stage 1: Build HMM binary
+FROM python:3.11-slim AS hmm-builder
+
+# Install build dependencies for HMM
 RUN apt-get update && apt-get install -y \
-    openscad \
-    curl \
     git \
-    wget \
     build-essential \
-    pkg-config \
-    libpython3-dev \
-    python3-distutils \
-    libglm-dev \
-    make \
     cmake \
+    make \
+    pkg-config \
+    libglm-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Build and install hmm (heightmap meshing utility) from source
+# Build HMM from source
 RUN cd /tmp && \
     git clone https://github.com/fogleman/hmm.git && \
     cd hmm && \
     make && \
-    cp hmm /usr/local/bin/ && \
-    cd / && \
-    rm -rf /tmp/hmm
+    cp hmm /usr/local/bin/hmm
+
+# Stage 2: Development runtime
+FROM python:3.11-slim
+
+# Install runtime dependencies (including curl for health checks and wget for dev convenience)
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy HMM binary from builder stage
+COPY --from=hmm-builder /usr/local/bin/hmm /usr/local/bin/hmm
 
 # Install Poetry
 RUN pip install poetry
@@ -50,8 +58,6 @@ RUN groupadd -g $GID appuser && useradd -u $UID -g $GID -m appuser
 # Create temp directory with proper permissions
 RUN mkdir -p temp && chmod 755 temp && chown -R appuser:appuser /app
 
-# Verify OpenSCAD is installed
-RUN openscad --version
 
 # Switch to non-root user
 USER appuser
