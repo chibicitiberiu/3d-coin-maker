@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Upload, Settings, Eye, Download, Loader2, Image, AlertTriangle } from 'lucide-svelte';
+	import { Eye, Loader2, Image, AlertTriangle } from 'lucide-svelte';
 	import { browser } from '$app/environment';
 	import { onDestroy } from 'svelte';
 	import STLViewer from '$lib/STLViewer.svelte';
@@ -9,6 +9,9 @@
 	import CoinParametersControls from '$lib/CoinParametersControls.svelte';
 	import HeightmapPositioningControls from '$lib/HeightmapPositioningControls.svelte';
 	import TabControl from '$lib/TabControl.svelte';
+	import MainLayout from '$lib/components/MainLayout.svelte';
+	import WorkflowActions from '$lib/components/WorkflowActions.svelte';
+	import TabContentViewer from '$lib/components/TabContentViewer.svelte';
 
 	// Import stores and services
 	import {
@@ -57,6 +60,7 @@
 	} from '$lib/stores/uiState';
 	import { generationService } from '$lib/services/GenerationService';
 	import { imageProcessingService } from '$lib/services/ImageProcessingService';
+	import { createEventHandlersService, type EventHandlersService } from '$lib/services/EventHandlersService';
 	import type { CoinParameters } from '$lib/services/BackendService';
 	
 	// Component references
@@ -110,96 +114,7 @@
 	
 	
 	// Handle file upload from ImageUpload component
-	function handleFileProcessed(event: CustomEvent<{ file: File; imageUrl: string }>) {
-		const { file, imageUrl } = event.detail;
-		
-		// Reset state through store actions
-		imageProcessingActions.setUploadedFile(file, imageUrl);
-		imageProcessingActions.resetProcessingState();
-		generationActions.reset();
-		
-		console.log('File processed successfully:', file.name);
-		
-		// The reactive statement will automatically trigger processing for the new image
-	}
-
-	// Handle upload errors from ImageUpload component
-	function handleUploadError(event: CustomEvent<{ message: string }>) {
-		alert(event.detail.message);
-	}
-
-	// Handle image processing parameter changes
-	function handleImageProcessingChanged(event: CustomEvent<{
-		grayscaleMethod: 'average' | 'luminance' | 'red' | 'green' | 'blue' | 'custom';
-		brightness: number;
-		contrast: number;
-		gamma: number;
-		invertColors: boolean;
-		isDragFeedback?: boolean;
-	}>) {
-		const { grayscaleMethod: newGrayscaleMethod, brightness: newBrightness, contrast: newContrast, gamma: newGamma, invertColors: newInvertColors, isDragFeedback } = event.detail;
-		imageProcessingActions.updateParams({
-			grayscaleMethod: newGrayscaleMethod,
-			brightness: newBrightness,
-			contrast: newContrast,
-			gamma: newGamma,
-			invertColors: newInvertColors
-		});
-		
-		// Use adaptive processing for drag feedback, normal processing otherwise
-		if (isDragFeedback) {
-			isDragProcessing = true;
-			updatePreviewAdaptive().finally(() => {
-				// Short delay before allowing regular processing again
-				setTimeout(() => {
-					isDragProcessing = false;
-				}, 100);
-			});
-		} else {
-			isDragProcessing = false;
-			updatePreview();
-		}
-	}
-
-	// Handle coin parameter changes
-	function handleCoinParametersChanged(event: CustomEvent<{
-		coinShape: 'circle' | 'square' | 'hexagon' | 'octagon';
-		coinSize: number;
-		coinThickness: number;
-		reliefDepth: number;
-	}>) {
-		const { coinShape: newCoinShape, coinSize: newCoinSize, coinThickness: newCoinThickness, reliefDepth: newReliefDepth } = event.detail;
-		coinParametersActions.updateCoinParameters({
-			coinShape: newCoinShape,
-			coinSize: newCoinSize,
-			coinThickness: newCoinThickness,
-			reliefDepth: newReliefDepth
-		});
-	}
-
-	// Handle heightmap positioning parameter changes
-	function handleHeightmapPositioningChanged(event: CustomEvent<{
-		heightmapScale: number;
-		offsetX: number;
-		offsetY: number;
-		rotation: number;
-	}>) {
-		const { heightmapScale: newHeightmapScale, offsetX: newOffsetX, offsetY: newOffsetY, rotation: newRotation } = event.detail;
-		coinParametersActions.updateHeightmapPositioning({
-			heightmapScale: newHeightmapScale,
-			offsetX: newOffsetX,
-			offsetY: newOffsetY,
-			rotation: newRotation
-		});
-		
-		// These parameters only affect canvas display, not image processing
-		// CanvasViewer will automatically redraw when its props change
-	}
-
-	// Handle tab changes
-	function handleTabChanged(event: CustomEvent<{ tabId: string }>) {
-		uiActions.setActiveTab(event.detail.tabId as 'original' | 'processed' | 'result');
-	}
+	// Event handlers moved to EventHandlersService
 
 	// Handle cancel processing request from controls
 	function handleCancelProcessing() {
@@ -301,51 +216,15 @@
 		}
 	}
 
-	async function generateSTL() {
-		if (!currentProcessedImageBlob || !browser) return;
-		
-		// Switch to result tab immediately when generation starts
-		uiActions.setActiveTab('result');
-		
-		console.log('generateSTL: Starting STL generation via service');
-		
-		try {
-			const result = await generationService.generateSTL(
-				currentProcessedImageBlob,
-				currentCoinParams,
-				(progress) => {
-					console.log(`Generation ${progress.step}: ${progress.progress}% - ${progress.message}`);
-					// Store progress in state for UI updates
-					generationActions.setGenerationProgress(progress);
-				}
-			);
-			
-			if (!result.success && result.error) {
-				throw new Error(result.error);
-			}
-			
-			console.log('generateSTL: STL generation completed via service');
-			
-		} catch (error) {
-			console.error('Error generating STL:', error);
-			alert('Error generating STL: ' + (error instanceof Error ? error.message : 'Unknown error'));
-		} finally {
-			// Always switch to result tab, whether success or failure
-			uiActions.setActiveTab('result');
-		}
-	}
-
-	async function downloadSTL() {
-		const currentGenerationId = $generationState.generationId;
-		if (!currentGenerationId) return;
-		
-		try {
-			await generationService.downloadSTL(currentGenerationId);
-		} catch (error) {
-			console.error('Error downloading STL:', error);
-			alert('Error downloading STL: ' + (error instanceof Error ? error.message : 'Unknown error'));
-		}
-	}
+	// Generate and download functions moved to WorkflowActions component
+	
+	// Create event handlers service
+	let eventHandlers: EventHandlersService;
+	$: eventHandlers = createEventHandlersService(
+		updatePreview,
+		updatePreviewAdaptive,
+		(value: boolean) => { isDragProcessing = value; }
+	);
 
 	// Relief depth validation moved to CoinParametersControls component
 
@@ -417,18 +296,12 @@
 	<title>Coin Maker - Generate 3D Printable Coins</title>
 </svelte:head>
 
-<div class="app-layout">
-	<!-- Left Panel - Controls (30%) -->
-	<aside class="controls-panel">
-		<header class="controls-header">
-			<h2><Settings size={18} /> Controls</h2>
-		</header>
-		<div class="controls-content">
-		
+<MainLayout>
+	<svelte:fragment slot="controls">
 		<ImageUpload
 			bind:this={imageUpload}
-			on:fileProcessed={handleFileProcessed}
-			on:error={handleUploadError}
+			on:fileProcessed={eventHandlers.handleFileProcessed}
+			on:error={eventHandlers.handleUploadError}
 		/>
 
 		<ImageProcessingControls
@@ -438,7 +311,7 @@
 			gamma={$gamma}
 			invertColors={$invertColors}
 			bind:expanded={$imageProcessingExpanded}
-			on:parametersChanged={handleImageProcessingChanged}
+			on:parametersChanged={eventHandlers.handleImageProcessingChanged}
 			on:cancelProcessing={handleCancelProcessing}
 		/>
 
@@ -448,7 +321,7 @@
 			coinThickness={$coinThickness}
 			reliefDepth={$reliefDepth}
 			bind:expanded={$coinParametersExpanded}
-			on:parametersChanged={handleCoinParametersChanged}
+			on:parametersChanged={eventHandlers.handleCoinParametersChanged}
 		/>
 
 		<HeightmapPositioningControls
@@ -457,219 +330,36 @@
 			offsetY={$offsetY}
 			rotation={$rotation}
 			bind:expanded={$heightmapPositioningExpanded}
-			on:parametersChanged={handleHeightmapPositioningChanged}
+			on:parametersChanged={eventHandlers.handleHeightmapPositioningChanged}
 		/>
-		</div>
-		<footer class="controls-footer">
-			<div class="actions">
-				<button 
-					on:click={generateSTL}
-					disabled={!currentProcessedImageBlob || currentIsGenerating}
-				>
-					{#if currentIsGenerating}
-						<Loader2 size={14} class="spin" />
-						Generating...
-					{:else}
-						Generate STL
-					{/if}
-				</button>
-				<button 
-					class="outline" 
-					disabled={!currentGeneratedSTLUrl}
-					on:click={downloadSTL}
-				>
-					<Download size={14} />
-					Download STL
-				</button>
-			</div>
-		</footer>
-	</aside>
+	</svelte:fragment>
 
-	<!-- Right Panel - Viewer (70%) -->
-	<main class="viewer-panel">
+	<svelte:fragment slot="actions">
+		<WorkflowActions />
+	</svelte:fragment>
+
+	<svelte:fragment slot="viewer">
 		<TabControl 
 			activeTab={currentActiveTab}
 			{tabs}
-			on:tabChanged={handleTabChanged}
+			on:tabChanged={eventHandlers.handleTabChanged}
 		/>
 
-		<div class="tab-content">
-			{#if currentActiveTab === 'original'}
-				<div class="image-viewer">
-					{#if currentUploadedImageUrl}
-						<img 
-							bind:this={originalImageElement}
-							src={currentUploadedImageUrl} 
-							alt="" 
-							class="uploaded-image"
-							crossorigin="anonymous"
-							on:load={handleImageLoad}
-						/>
-					{:else}
-						<div class="placeholder-content">
-							<Eye size={48} />
-							<h3>Original Image</h3>
-							<p>Upload an image to see it here with zoom and pan controls</p>
-						</div>
-					{/if}
-				</div>
-			{:else if currentActiveTab === 'processed'}
-				<div class="prepared-image-viewer">
-					{#if currentProcessedImageData || currentIsProcessing}
-						<CanvasViewer
-							bind:this={canvasViewer}
-							processedImageData={currentProcessedImageData}
-							coinSize={$coinSize}
-							coinThickness={$coinThickness}
-							coinShape={$coinShape}
-							heightmapScale={$heightmapScale}
-							offsetX={$offsetX}
-							offsetY={$offsetY}
-							rotation={$rotation}
-							pixelsPerMM={$pixelsPerMM}
-							activeTab={currentActiveTab}
-						/>
-						
-						<!-- Status bar under canvas -->
-						<div class="canvas-status-bar">
-							<div class="status-info">
-								<span class="coin-dimensions">
-									{$coinSize}mm × {$coinThickness}mm {$coinShape}
-								</span>
-								{#if canvasViewer}
-									{@const viewState = canvasViewer.getViewState()}
-									<span class="zoom-info">
-										Zoom: {viewState.viewZoom.toFixed(1)}x
-									</span>
-									<span class="position-info">
-										Pan: {Math.round(viewState.viewX)}, {Math.round(viewState.viewY)}
-									</span>
-								{/if}
-							</div>
-							<button 
-								type="button" 
-								class="reset-view-btn"
-								on:click={resetCanvasView}
-								title="Reset view to center"
-							>
-								⌂ Reset View
-							</button>
-						</div>
-					{:else if currentIsProcessing}
-						<div class="placeholder-container">
-							<div class="placeholder-content">
-								<Loader2 size={48} class="spin" />
-								<h3>Processing Image</h3>
-								<p>Applying image processing parameters...</p>
-							</div>
-						</div>
-					{:else}
-						<div class="placeholder-container">
-							<div class="placeholder-content">
-								<Eye size={48} />
-								<h3>Prepared Image</h3>
-								<p>Upload an image and adjust parameters to see the prepared result</p>
-							</div>
-						</div>
-					{/if}
-				</div>
-			{:else}
-				<div class="stl-viewer">
-					{#if currentGeneratedSTLUrl}
-						<STLViewer stlUrl={currentGeneratedSTLUrl} />
-					{:else if currentIsGenerating}
-						<div class="placeholder-content">
-							<Loader2 size={48} class="spin" />
-							<h3>Generating STL</h3>
-							{#if currentGenerationProgress}
-								<div class="progress-container">
-									<div class="progress-bar">
-										<div 
-											class="progress-fill" 
-											style="width: {currentGenerationProgress.progress}%"
-										></div>
-									</div>
-									<p class="progress-text">
-										{Math.round(currentGenerationProgress.progress)}% - {currentGenerationProgress.message}
-									</p>
-								</div>
-							{:else}
-								<p>Creating your 3D coin model...</p>
-							{/if}
-						</div>
-					{:else if currentStlGenerationError}
-						<div class="placeholder-content error-content">
-							<AlertTriangle size={48} class="error-icon" />
-							<h3>STL Generation Failed</h3>
-							<p class="error-message">{currentStlGenerationError}</p>
-							<small>Check the parameters and try again, or refresh the page if the issue persists</small>
-						</div>
-					{:else}
-						<div class="placeholder-content">
-							<Eye size={48} />
-							<h3>3D STL Viewer</h3>
-							<p>Process an image and generate an STL to see your 3D coin model here</p>
-							<small>Interactive 3D controls: drag to rotate, scroll to zoom</small>
-						</div>
-					{/if}
-				</div>
-			{/if}
-		</div>
-	</main>
-</div>
+		<TabContentViewer 
+			activeTab={currentActiveTab}
+			bind:originalImageElement
+			bind:canvasViewer
+			onImageLoad={handleImageLoad}
+			onResetCanvasView={resetCanvasView}
+		/>
+	</svelte:fragment>
+</MainLayout>
 
 <style>
-	.app-layout {
-		display: grid;
-		grid-template-columns: 28% 72%;
-		gap: 0.75rem;
-		height: calc(100vh - 80px);
-		min-height: 500px;
-		max-width: 100%;
-		margin: 0;
-		padding: 0;
-	}
+	/* Layout styles moved to MainLayout component */
 
-	.controls-panel {
-		background: var(--pico-card-background-color);
-		border: 1px solid var(--pico-muted-border-color);
-		border-radius: var(--pico-border-radius);
-		font-size: 12pt;
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		max-height: 100%;
-		overflow: hidden;
-	}
 
-	.controls-header {
-		padding: 0.75rem 0.75rem 0.5rem 0.75rem;
-		border-bottom: 1px solid var(--pico-muted-border-color);
-		flex-shrink: 0;
-	}
 
-	.controls-content {
-		padding: 0.75rem;
-		overflow-y: auto;
-		flex: 1;
-		min-height: 0;
-		transition: background-color 0.2s;
-	}
-
-	.controls-footer {
-		padding: 0.5rem 0.75rem 0.75rem 0.75rem;
-		border-top: 1px solid var(--pico-muted-border-color);
-		flex-shrink: 0;
-	}
-
-	.controls-panel h2 {
-		margin: 0;
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		font-size: 1rem;
-		color: var(--pico-color);
-	}
 
 	.controls-panel section {
 		margin-bottom: 1rem;
@@ -894,54 +584,12 @@
 
 
 
-	.actions {
-		display: flex;
-		flex-direction: row;
-		gap: 0.5rem;
-	}
-
-	.actions button {
-		font-size: 10pt;
-		padding: 0.375rem 0.5rem;
-		color: var(--pico-color);
-		flex: 1;
-		min-width: 0;
-	}
-
-	.actions button:not([disabled]) {
-		color: var(--pico-color);
-	}
-
-	.actions button[disabled] {
-		color: var(--pico-muted-color);
-	}
-
-	.viewer-panel {
-		background: var(--pico-card-background-color);
-		border: 1px solid var(--pico-muted-border-color);
-		border-radius: var(--pico-border-radius);
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-		font-size: 0.85rem;
-	}
+	/* Actions styles moved to WorkflowActions component */
 
 
-	.tab-content {
-		flex: 1;
-		padding: 0.25rem;
-		overflow: hidden;
-	}
 
-	.image-viewer,
-	.stl-viewer {
-		height: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: var(--pico-background-color);
-		border-radius: var(--pico-border-radius);
-	}
+	/* Tab content styles moved to TabContentViewer component */
+
 
 	.placeholder-content {
 		text-align: center;
@@ -1024,29 +672,7 @@
 	}
 
 	/* Mobile Responsiveness */
-	@media (max-width: 768px) {
-		.app-layout {
-			grid-template-columns: 1fr;
-			grid-template-rows: auto 1fr;
-			height: auto;
-			gap: 0.5rem;
-		}
-
-		.controls-panel {
-			height: auto;
-			max-height: none;
-			padding: 0.5rem;
-			font-size: 0.8rem;
-		}
-
-		.viewer-panel {
-			min-height: 400px;
-		}
-
-		.tab-content {
-			padding: 0.25rem;
-		}
-	}
+	/* Mobile responsive styles moved to MainLayout component */
 
 	/* Canvas status bar */
 	.canvas-status-bar {

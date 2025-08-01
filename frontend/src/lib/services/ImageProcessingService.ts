@@ -186,7 +186,11 @@ export class ImageProcessingService {
 					lowResImageData,
 					processorParams,
 					(progress) => {
-						onProgress?.(progress);
+						onProgress?.({
+							step: progress.step as 'loading' | 'processing' | 'converting' | 'completed',
+							progress: progress.progress,
+							message: progress.message
+						});
 					}
 				);
 				
@@ -232,7 +236,11 @@ export class ImageProcessingService {
 					inputImageData,
 					processorParams,
 					(progress) => {
-						onProgress?.(progress);
+						onProgress?.({
+							step: progress.step as 'loading' | 'processing' | 'converting' | 'completed',
+							progress: progress.progress,
+							message: progress.message
+						});
 					}
 				);
 				

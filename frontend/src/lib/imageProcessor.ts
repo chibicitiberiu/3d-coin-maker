@@ -340,5 +340,4 @@ export async function loadPhoton(): Promise<PhotonModule> {
 	return photonModule;
 }
 
-// Export types for worker
-export type { PhotonModule };
+// PhotonModule interface is already exported above

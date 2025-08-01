@@ -148,7 +148,7 @@ export class GenerationService {
 			});
 
 			const timestamp = finalStatus?.stl_timestamp;
-			const stlUrl = backendService.getSTLDownloadUrl(generationId, timestamp);
+			const stlUrl = backendService.getSTLDownloadUrl(generationId, timestamp || Date.now());
 			
 			generationActions.setGeneratedSTLUrl(stlUrl);
 

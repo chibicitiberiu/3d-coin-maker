@@ -93,32 +93,40 @@ async function processImage(id: string, imageData: ImageData, params: ProcessIma
 		if (!ctx) throw new Error('Could not get OffscreenCanvas context');
 		
 		ctx.putImageData(imageData, 0, 0);
-		const photonImg = photonModule.open_image(canvas as any, ctx as any);
+		
+		// Check if photon is available
+		if (!photonModule) {
+			throw new Error('Photon module not available');
+		}
+		
+		// Use non-null assertion since we've checked above
+		const photon = photonModule;
+		const photonImg = photon.open_image(canvas as any, ctx as any);
 
 		// Apply grayscale conversion using available methods
 		switch (params.grayscaleMethod) {
 			case 'red':
 				// Use single_channel_grayscale with channel 0 (red)
-				if (photonModule.single_channel_grayscale) {
-					photonModule.single_channel_grayscale(photonImg, 0);
+				if (photon.single_channel_grayscale) {
+					photon.single_channel_grayscale(photonImg, 0);
 				} else {
-					photonModule.grayscale(photonImg);
+					photon.grayscale(photonImg);
 				}
 				break;
 			case 'green':
 				// Use single_channel_grayscale with channel 1 (green)
-				if (photonModule.single_channel_grayscale) {
-					photonModule.single_channel_grayscale(photonImg, 1);
+				if (photon.single_channel_grayscale) {
+					photon.single_channel_grayscale(photonImg, 1);
 				} else {
-					photonModule.grayscale(photonImg);
+					photon.grayscale(photonImg);
 				}
 				break;
 			case 'blue':
 				// Use single_channel_grayscale with channel 2 (blue)
-				if (photonModule.single_channel_grayscale) {
-					photonModule.single_channel_grayscale(photonImg, 2);
+				if (photon.single_channel_grayscale) {
+					photon.single_channel_grayscale(photonImg, 2);
 				} else {
-					photonModule.grayscale(photonImg);
+					photon.grayscale(photonImg);
 				}
 				break;
 			case 'luminance':
@@ -126,34 +134,34 @@ async function processImage(id: string, imageData: ImageData, params: ProcessIma
 			case 'custom':
 			default:
 				// Use standard grayscale function
-				photonModule.grayscale(photonImg);
+				photon.grayscale(photonImg);
 		}
 
 		sendProgress(id, 'adjusting', 50, 'Applying adjustments...');
 
 		// Apply brightness adjustment
 		if (params.brightness !== 0) {
-			photonModule.adjust_brightness(photonImg, params.brightness);
+			photon.adjust_brightness(photonImg, params.brightness);
 		}
 
 		// Apply contrast adjustment
 		if (params.contrast !== 0) {
-			photonModule.adjust_contrast(photonImg, params.contrast);
+			photon.adjust_contrast(photonImg, params.contrast);
 		}
 
 		// Apply gamma correction
 		if (params.gamma !== 1.0) {
-			if (photonModule.gamma_correction) {
+			if (photon.gamma_correction) {
 				// Use the same gamma value for red, green, and blue channels
-				photonModule.gamma_correction(photonImg, params.gamma, params.gamma, params.gamma);
-			} else if (photonModule.adjust_gamma) {
-				photonModule.adjust_gamma(photonImg, params.gamma);
+				photon.gamma_correction(photonImg, params.gamma, params.gamma, params.gamma);
+			} else if (photon.adjust_gamma) {
+				photon.adjust_gamma(photonImg, params.gamma);
 			}
 		}
 
 		// Apply color inversion
 		if (params.invertColors) {
-			photonModule.invert(photonImg);
+			photon.invert(photonImg);
 		}
 
 		sendProgress(id, 'converting', 80, 'Converting result...');
@@ -177,7 +185,7 @@ async function processImage(id: string, imageData: ImageData, params: ProcessIma
 			
 			// Fallback: try putImageData approach
 			try {
-				photonModule.putImageData(canvas as any, ctx as any, photonImg);
+				photon.putImageData(canvas as any, ctx as any, photonImg);
 				processedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 			} catch (putError) {
 				console.error('Worker: Both methods failed:', putError);
