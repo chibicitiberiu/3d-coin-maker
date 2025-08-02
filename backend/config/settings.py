@@ -1,8 +1,8 @@
 """
-FastAPI Settings Configuration
+Base Settings Configuration
 
-Replaces Django settings with Pydantic-based configuration management
-for the Coin Maker application.
+Provides the base Settings class with common configuration for the
+Coin Maker application.
 """
 
 from pathlib import Path
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # Basic application settings
     debug: bool = Field(default=True, description="Enable debug mode")
-    secret_key: str = Field(default="your-secret-key-change-in-production", description="Secret key for security")
+    secret_key: str = Field(default="dev-secret-key-change-in-production", description="Secret key for security - must be set in environment")
 
     # Server settings
     host: str = Field(default="127.0.0.1", description="Server host")
@@ -46,9 +46,19 @@ class Settings(BaseSettings):
     file_cleanup_interval_minutes: int = Field(default=5, description="File cleanup interval in minutes")
     file_max_age_minutes: int = Field(default=30, description="Maximum age of temporary files in minutes")
 
+    # Desktop mode detection settings
+    desktop_mode: bool = Field(default=False, description="Desktop mode flag (enables EEL GUI and APScheduler)")
+
     # Rate limiting settings
     max_generations_per_hour: int = Field(default=20, description="Maximum generations per IP per hour")
+    max_concurrent_generations: int = Field(default=10, description="Maximum concurrent generations")
+    max_generations_burst: int = Field(default=100, description="Burst limit for rate limiting")
     rate_limit_window_hours: int = Field(default=1, description="Rate limit window in hours")
+    rate_limit_cleanup_interval_seconds: int = Field(default=300, description="Rate limit cleanup interval in seconds")
+
+    # Processing timeout settings (deployment-specific configuration)
+    image_processing_timeout_seconds: int = Field(default=120, description="Image processing timeout")
+    stl_generation_timeout_seconds: int = Field(default=300, description="STL generation timeout")
 
     # Task queue settings
     use_celery: bool = Field(default=True, description="Use Celery for task queue (False for APScheduler)")
@@ -60,22 +70,8 @@ class Settings(BaseSettings):
     max_task_retries: int = Field(default=3, description="Maximum task retry attempts")
     task_retry_delay_seconds: int = Field(default=60, description="Delay between task retries in seconds")
 
-    # OpenSCAD settings (legacy, may be removed)
-    openscad_timeout_seconds: int = Field(default=300, description="OpenSCAD operation timeout")
-    openscad_path: str = Field(default="openscad", description="Path to OpenSCAD binary")
-
     # HMM settings
     hmm_timeout_seconds: int = Field(default=60, description="HMM operation timeout")
-
-    def __init__(self, **kwargs):
-        """Initialize settings with environment-specific defaults."""
-        super().__init__(**kwargs)
-
-        # Set Celery URLs if not specified
-        if self.celery_broker_url is None:
-            self.celery_broker_url = self.redis_url
-        if self.celery_result_backend is None:
-            self.celery_result_backend = self.redis_url
 
     @property
     def temp_path(self) -> Path:
@@ -87,27 +83,20 @@ class Settings(BaseSettings):
         """Get max file size in bytes."""
         return self.max_file_size_mb * 1024 * 1024
 
-    @property
     def is_desktop_mode(self) -> bool:
         """Check if running in desktop mode (APScheduler instead of Celery)."""
         return not self.use_celery
 
+    def should_use_desktop_mode(self) -> bool:
+        """Determine if desktop mode should be used based on environment indicators."""
+        return self.desktop_mode or not self.use_celery
 
-# Global settings instance
-settings = Settings()
+    def __init__(self, **kwargs):
+        """Initialize settings with environment-specific defaults."""
+        super().__init__(**kwargs)
 
-
-# Helper functions for backward compatibility
-def get_temp_dir() -> Path:
-    """Get temporary directory path."""
-    return settings.temp_path
-
-
-def is_debug() -> bool:
-    """Check if debug mode is enabled."""
-    return settings.debug
-
-
-def get_secret_key() -> str:
-    """Get secret key."""
-    return settings.secret_key
+        # Set Celery URLs if not specified
+        if self.celery_broker_url is None:
+            self.celery_broker_url = self.redis_url
+        if self.celery_result_backend is None:
+            self.celery_result_backend = self.redis_url

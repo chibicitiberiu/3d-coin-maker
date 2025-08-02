@@ -8,32 +8,26 @@ the TaskQueue interface, allowing for flexible deployment options.
 
 import logging
 from collections.abc import Callable
-from typing import Any
 
 from core.interfaces.task_queue import ProgressCallbackProtocol
+from core.models import (
+    CleanupResponse,
+    CoinParameters,
+    ImageProcessingParameters,
+    ProcessingError,
+    RetryableError,
+    TaskResponse,
+)
+from core.utils import create_image_processing_tracker, create_stl_generation_tracker
 
 logger = logging.getLogger(__name__)
 
 
-class ProcessingError(Exception):
-    """Custom exception for processing errors that should not be retried."""
-    def __init__(self, message: str):
-        self.message = message
-        super().__init__(message)
-
-
-class RetryableError(Exception):
-    """Custom exception for errors that should trigger a retry."""
-    def __init__(self, message: str):
-        self.message = message
-        super().__init__(message)
-
-
 def process_image_task_func(
     generation_id: str,
-    parameters: dict[str, Any],
+    parameters: dict[str, str | int | float | bool],
     progress_callback: ProgressCallbackProtocol | None = None
-) -> dict[str, Any]:
+) -> TaskResponse:
     """
     Process an uploaded image with the given parameters.
 
@@ -54,35 +48,32 @@ def process_image_task_func(
     """
     try:
         # Import container inside function to avoid circular imports
-        from core.containers.application import container
+        from core.containers.compat import container
         coin_service = container.coin_generation_service()
 
-        # Update progress
-        if progress_callback:
-            progress_callback.update(10, 'image_processing')
+        # Create progress tracker for this task
+        progress = create_image_processing_tracker(progress_callback)
+        progress.update_stage('start', 'Starting image processing')
 
         logger.info(f"Processing image for generation {generation_id}")
 
+        # Convert dict to proper model
+        image_params = ImageProcessingParameters.from_dict(parameters)
+
+        progress.update_stage('loading_image', 'Loading and validating image')
+
         # Process the image
-        success, error_msg = coin_service.process_image(generation_id, parameters)
+        coin_service.process_image(generation_id, image_params)
 
-        if not success:
-            # Business logic failure - don't retry
-            error_message = error_msg or "Image processing failed"
-            logger.error(f"Image processing failed for {generation_id}: {error_message}")
-            raise ProcessingError(error_message)
-
-        # Update progress to completion
-        if progress_callback:
-            progress_callback.update(100, 'image_processed')
+        progress.update_stage('complete', 'Image processing completed')
 
         logger.info(f"Successfully processed image for generation {generation_id}")
 
-        return {
-            'success': True,
-            'generation_id': generation_id,
-            'step': 'image_processed'
-        }
+        return TaskResponse(
+            success=True,
+            generation_id=generation_id,
+            step='image_processed'
+        )
 
     except ProcessingError:
         # Don't wrap business logic errors
@@ -95,9 +86,9 @@ def process_image_task_func(
 
 def generate_stl_task_func(
     generation_id: str,
-    coin_parameters: dict[str, Any],
+    coin_parameters: dict[str, str | float],
     progress_callback: ProgressCallbackProtocol | None = None
-) -> dict[str, Any]:
+) -> TaskResponse:
     """
     Generate an STL file from processed image data.
 
@@ -118,42 +109,40 @@ def generate_stl_task_func(
     """
     try:
         # Import container inside function to avoid circular imports
-        from core.containers.application import container
+        from core.containers.compat import container
         coin_service = container.coin_generation_service()
+
+        # Create progress tracker for this task
+        progress = create_stl_generation_tracker(progress_callback)
+        progress.update_stage('start', 'Starting STL generation')
 
         logger.info(f"Generating STL for generation {generation_id}")
 
-        # Create progress wrapper that works with both callback types
-        def progress_wrapper(progress: int, step: str):
-            if progress_callback:
-                progress_callback.update(progress, step)
+        # Convert dict to proper model
+        coin_params = CoinParameters.from_dict(coin_parameters)
 
-        # Initial progress
-        progress_wrapper(10, 'stl_generation_starting')
+        progress.update_stage('loading_heightmap', 'Loading processed heightmap')
+
+        # Create progress wrapper that works with the service
+        def progress_wrapper(progress_val: int, step: str):
+            progress.update_custom(progress_val, step)
 
         # Generate STL with progress callback
-        success, error_msg = coin_service.generate_stl(
+        coin_service.generate_stl(
             generation_id,
-            coin_parameters,
+            coin_params,
             progress_wrapper
         )
 
-        if not success:
-            # Business logic failure - don't retry
-            error_message = error_msg or "STL generation failed"
-            logger.error(f"STL generation failed for {generation_id}: {error_message}")
-            raise ProcessingError(error_message)
-
-        # Final progress
-        progress_wrapper(100, 'stl_generated')
+        progress.update_stage('complete', 'STL generation completed')
 
         logger.info(f"Successfully generated STL for generation {generation_id}")
 
-        return {
-            'success': True,
-            'generation_id': generation_id,
-            'step': 'stl_generated'
-        }
+        return TaskResponse(
+            success=True,
+            generation_id=generation_id,
+            step='stl_generated'
+        )
 
     except ProcessingError:
         # Don't wrap business logic errors
@@ -166,7 +155,7 @@ def generate_stl_task_func(
 
 def cleanup_old_files_task_func(
     progress_callback: ProgressCallbackProtocol | None = None
-) -> dict[str, Any]:
+) -> CleanupResponse:
     """
     Clean up old temporary files.
 
@@ -184,9 +173,8 @@ def cleanup_old_files_task_func(
         RetryableError: For transient errors that should be retried
     """
     try:
-        # Import settings
-        from core.containers.application import container
-        from fastapi_settings import settings
+        # Import container inside function to avoid circular imports
+        from core.containers.compat import container
 
         logger.info("Starting file cleanup task")
 
@@ -194,8 +182,9 @@ def cleanup_old_files_task_func(
         if progress_callback:
             progress_callback.update(10, 'cleanup_starting')
 
-        # Get file storage service
+        # Get file storage service and settings from container
         file_storage = container.file_storage()
+        settings = container.settings()
 
         # Perform cleanup
         if progress_callback:
@@ -208,11 +197,11 @@ def cleanup_old_files_task_func(
 
         logger.info(f"File cleanup completed: {deleted_count} files deleted")
 
-        return {
-            'success': True,
-            'deleted_files': deleted_count,
-            'message': f'Cleaned up {deleted_count} old files'
-        }
+        return CleanupResponse(
+            success=True,
+            deleted_files=deleted_count,
+            message=f'Cleaned up {deleted_count} old files'
+        )
 
     except Exception as exc:
         # For cleanup tasks, we want to retry transient errors but not fail permanently
@@ -220,12 +209,12 @@ def cleanup_old_files_task_func(
         logger.error(f"File cleanup failed: {str(exc)}")
 
         # Return partial success rather than raising - cleanup failures shouldn't break the system
-        return {
-            'success': False,
-            'deleted_files': 0,
-            'error': f"Cleanup failed: {str(exc)}",
-            'message': 'File cleanup encountered errors but will retry later'
-        }
+        return CleanupResponse(
+            success=False,
+            deleted_files=0,
+            error=f"Cleanup failed: {str(exc)}",
+            message='File cleanup encountered errors but will retry later'
+        )
 
 
 # Task registry for easy lookup

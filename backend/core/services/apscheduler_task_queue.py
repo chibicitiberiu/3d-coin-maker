@@ -18,6 +18,7 @@ from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from core.interfaces.task_queue import ProgressCallback, TaskQueue, TaskResult, TaskStatus
+from core.models import TaskProgress
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ class APSchedulerTaskQueue(TaskQueue):
         self,
         task_name: str,
         args: tuple = (),
-        kwargs: dict[str, Any] | None = None,
+        kwargs: dict[str, str | int | float | bool] | None = None,
         max_retries: int = 3,
         retry_delay: int = 60
     ) -> str:
@@ -250,7 +251,7 @@ class APSchedulerTaskQueue(TaskQueue):
                         retry_count=retry_count
                     )
 
-    def _update_task_progress(self, task_id: str, status: TaskStatus, progress_data: dict[str, Any]) -> None:
+    def _update_task_progress(self, task_id: str, status: TaskStatus, progress_data: TaskProgress) -> None:
         """Update task progress information."""
         with self._results_lock:
             if task_id in self._results:
@@ -292,7 +293,8 @@ class APSchedulerTaskQueue(TaskQueue):
             try:
                 self.scheduler.remove_job(task_id)
                 cancelled_from_scheduler = True
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Could not remove job {task_id} from scheduler: {e}")
                 cancelled_from_scheduler = False
 
             # Update result status
@@ -333,7 +335,7 @@ class APSchedulerTaskQueue(TaskQueue):
         """Check if the task queue is running."""
         return self._is_running and self.scheduler.running
 
-    def get_queue_stats(self) -> dict[str, Any]:
+    def get_queue_stats(self) -> dict[str, int | str]:
         """Get queue statistics."""
         try:
             with self._results_lock:

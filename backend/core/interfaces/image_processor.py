@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any
 
 from PIL import Image
+
+from core.models import ImageProcessingParameters
 
 
 class IImageProcessor(ABC):
@@ -13,7 +14,7 @@ class IImageProcessor(ABC):
         pass
 
     @abstractmethod
-    def process_image(self, image_path: str, parameters: dict[str, Any]) -> Image.Image:
+    def process_image(self, image_path: str, parameters: ImageProcessingParameters) -> Image.Image:
         """Process image with given parameters and return PIL Image."""
         pass
 

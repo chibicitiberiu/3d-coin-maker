@@ -7,54 +7,15 @@ task queue systems, allowing the application to switch between them based on dep
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from enum import Enum
-from typing import Any, Protocol
+from typing import Protocol
 
-
-class TaskStatus(Enum):
-    """Task execution status."""
-    PENDING = "PENDING"
-    PROCESSING = "PROCESSING"
-    SUCCESS = "SUCCESS"
-    FAILURE = "FAILURE"
-    RETRY = "RETRY"
-
-
-class TaskResult:
-    """Represents the result of a task execution."""
-
-    def __init__(
-        self,
-        task_id: str,
-        status: TaskStatus,
-        result: dict[str, Any] | None = None,
-        error: str | None = None,
-        progress: dict[str, Any] | None = None,
-        retry_count: int = 0
-    ):
-        self.task_id = task_id
-        self.status = status
-        self.result = result
-        self.error = error
-        self.progress = progress
-        self.retry_count = retry_count
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary format for API responses."""
-        return {
-            'task_id': self.task_id,
-            'status': self.status.value,
-            'result': self.result,
-            'error': self.error,
-            'progress': self.progress,
-            'retry_count': self.retry_count
-        }
+from core.models import TaskProgress, TaskResult, TaskStatus
 
 
 class ProgressCallbackProtocol(Protocol):
     """Protocol for progress callback implementations."""
 
-    def update(self, progress: int, step: str, extra_data: dict[str, Any] | None = None) -> None:
+    def update(self, progress: int, step: str, extra_data: dict[str, str | int | float | bool] | None = None) -> None:
         """Update task progress."""
         ...
 
@@ -62,18 +23,14 @@ class ProgressCallbackProtocol(Protocol):
 class ProgressCallback:
     """Callback interface for task progress updates."""
 
-    def __init__(self, task_id: str, update_func: Callable[[str, TaskStatus, dict[str, Any]], None]):
+    def __init__(self, task_id: str, update_func: Callable[[str, TaskStatus, TaskProgress], None]):
         self.task_id = task_id
         self.update_func = update_func
 
-    def update(self, progress: int, step: str, extra_data: dict[str, Any] | None = None):
+    def update(self, progress: int, step: str, extra_data: dict[str, str | int | float | bool] | None = None):
         """Update task progress."""
-        progress_data = {
-            'progress': progress,
-            'step': step,
-            **(extra_data or {})
-        }
-        self.update_func(self.task_id, TaskStatus.PROCESSING, progress_data)
+        progress_obj = TaskProgress(progress=progress, step=step, extra_data=extra_data)
+        self.update_func(self.task_id, TaskStatus.PROCESSING, progress_obj)
 
 
 class TaskQueue(ABC):
@@ -90,7 +47,7 @@ class TaskQueue(ABC):
         self,
         task_name: str,
         args: tuple = (),
-        kwargs: dict[str, Any] | None = None,
+        kwargs: dict[str, str | int | float | bool] | None = None,
         max_retries: int = 3,
         retry_delay: int = 60
     ) -> str:
@@ -166,7 +123,7 @@ class TaskQueue(ABC):
         pass
 
     @abstractmethod
-    def get_queue_stats(self) -> dict[str, Any]:
+    def get_queue_stats(self) -> dict[str, int | str]:
         """
         Get statistics about the task queue.
 
@@ -179,7 +136,7 @@ class TaskQueue(ABC):
         """
         pass
 
-    def health_check(self) -> dict[str, Any]:
+    def health_check(self) -> dict[str, str | bool | dict[str, int | str]]:
         """
         Perform a health check on the task queue system.
 

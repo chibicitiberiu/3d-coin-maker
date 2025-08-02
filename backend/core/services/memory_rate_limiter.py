@@ -1,34 +1,41 @@
 import time
 from collections import defaultdict, deque
 from threading import Lock
-from typing import Dict, Deque
 
-from constants import RateLimitConstants
 from core.interfaces.rate_limiter import IRateLimiter
-
-# Import settings
-from fastapi_settings import settings
 
 
 class MemoryRateLimiter(IRateLimiter):
     """In-memory implementation of IRateLimiter for APScheduler mode."""
 
-    def __init__(self):
-        """Initialize memory-based rate limiter."""
-        self._hourly_data: Dict[str, Deque[float]] = defaultdict(deque)
-        self._concurrent_data: Dict[str, int] = defaultdict(int)
+    def __init__(self, max_generations_per_hour: int = 20, max_concurrent_generations: int = 10,
+                 max_generations_burst: int = 100, cleanup_interval_seconds: int = 300):
+        """Initialize memory-based rate limiter with configuration injection.
+
+        Args:
+            max_generations_per_hour: Maximum generations per IP per hour
+            max_concurrent_generations: Maximum concurrent generations per IP
+            max_generations_burst: Burst limit for rate limiting
+            cleanup_interval_seconds: Cleanup interval in seconds
+        """
+        self._hourly_data: dict[str, deque[float]] = defaultdict(deque)
+        self._concurrent_data: dict[str, int] = defaultdict(int)
         self._lock = Lock()
+        self.max_generations_per_hour = max_generations_per_hour
+        self.max_concurrent_generations = max_concurrent_generations
+        self.max_generations_burst = max_generations_burst
+        self.cleanup_interval_seconds = cleanup_interval_seconds
 
     def is_allowed(self, ip_address: str, operation_type: str) -> bool:
         """Check if operation is allowed for the IP address."""
-        # Get limits from settings
+        # Get limits from injected configuration
         if operation_type == 'generation':
-            hourly_limit = settings.max_generations_per_hour
-            concurrent_limit = RateLimitConstants.DEFAULT_MAX_GENERATIONS  # Fixed concurrent limit
+            hourly_limit = self.max_generations_per_hour
+            concurrent_limit = self.max_concurrent_generations
         else:
             # Default limits for other operations
-            hourly_limit = RateLimitConstants.DEFAULT_MAX_GENERATIONS_BURST
-            concurrent_limit = RateLimitConstants.DEFAULT_MAX_GENERATIONS
+            hourly_limit = self.max_generations_burst
+            concurrent_limit = self.max_concurrent_generations
 
         with self._lock:
             # Check hourly limit
@@ -44,12 +51,12 @@ class MemoryRateLimiter(IRateLimiter):
     def record_operation(self, ip_address: str, operation_type: str) -> None:
         """Record an operation for rate limiting."""
         current_time = time.time()
-        
+
         with self._lock:
             # Record for hourly tracking
             hourly_key = f"{ip_address}:{operation_type}:hourly"
             self._hourly_data[hourly_key].append(current_time)
-            
+
             # Record for concurrent tracking
             concurrent_key = f"{ip_address}:{operation_type}:concurrent"
             self._concurrent_data[concurrent_key] += 1
@@ -57,9 +64,9 @@ class MemoryRateLimiter(IRateLimiter):
     def get_remaining_quota(self, ip_address: str, operation_type: str) -> int:
         """Get remaining quota for IP address and operation type."""
         if operation_type == 'generation':
-            hourly_limit = settings.max_generations_per_hour
+            hourly_limit = self.max_generations_per_hour
         else:
-            hourly_limit = RateLimitConstants.DEFAULT_MAX_GENERATIONS_BURST
+            hourly_limit = self.max_generations_burst
 
         with self._lock:
             current_count = self._get_hourly_count(ip_address, operation_type)
@@ -74,14 +81,14 @@ class MemoryRateLimiter(IRateLimiter):
         """Get count of operations in the last hour."""
         current_time = time.time()
         one_hour_ago = current_time - 3600  # 1 hour in seconds
-        
+
         hourly_key = f"{ip_address}:{operation_type}:hourly"
         timestamps = self._hourly_data[hourly_key]
-        
+
         # Remove old entries
         while timestamps and timestamps[0] < one_hour_ago:
             timestamps.popleft()
-        
+
         return len(timestamps)
 
     def _check_concurrent_limit(self, ip_address: str, operation_type: str, concurrent_limit: int) -> bool:

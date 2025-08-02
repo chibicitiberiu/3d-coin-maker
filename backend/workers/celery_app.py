@@ -6,7 +6,6 @@ replacing the Django-based Celery configuration.
 """
 
 
-from typing import Any
 
 from celery import Celery
 
@@ -17,16 +16,11 @@ from core.services.task_functions import (
     process_image_task_func,
 )
 
-# Import settings
-from fastapi_settings import settings
-
 # Create Celery app instance
 app = Celery('coin_maker_fastapi')
 
-# Configure Celery with settings from FastAPI
+# Basic configuration - detailed config will be set by celery_main.py
 app.conf.update(
-    broker_url=settings.celery_broker_url,
-    result_backend=settings.celery_result_backend,
     task_serializer='json',
     accept_content=['json'],
     result_serializer='json',
@@ -46,8 +40,6 @@ app.conf.update(
     # Task retry settings
     task_acks_late=True,
     worker_prefetch_multiplier=1,
-    task_default_retry_delay=settings.task_retry_delay_seconds,
-    task_max_retries=settings.max_task_retries,
 
     # Task time limits
     task_soft_time_limit=300,  # 5 minutes
@@ -69,7 +61,7 @@ def process_image_task(self, generation_id: str, parameters: dict):
             def __init__(self, task):
                 self.task = task
 
-            def update(self, progress: int, step: str, extra_data: dict[str, Any] | None = None):
+            def update(self, progress: int, step: str, extra_data: dict[str, str | int | float | bool] | None = None):
                 """Update progress with optional extra data."""
                 meta = {'progress': progress, 'step': step}
                 if extra_data:
@@ -94,7 +86,7 @@ def generate_stl_task(self, generation_id: str, coin_parameters: dict):
             def __init__(self, task):
                 self.task = task
 
-            def update(self, progress: int, step: str, extra_data: dict[str, Any] | None = None):
+            def update(self, progress: int, step: str, extra_data: dict[str, str | int | float | bool] | None = None):
                 """Update progress with optional extra data."""
                 meta = {'progress': progress, 'step': step}
                 if extra_data:
@@ -119,7 +111,7 @@ def cleanup_old_files_task(self):
             def __init__(self, task):
                 self.task = task
 
-            def update(self, progress: int, step: str, extra_data: dict[str, Any] | None = None):
+            def update(self, progress: int, step: str, extra_data: dict[str, str | int | float | bool] | None = None):
                 """Update progress with optional extra data."""
                 meta = {'progress': progress, 'step': step}
                 if extra_data:

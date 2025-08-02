@@ -318,10 +318,10 @@ poetry run python -m pytest tests/test_integration.py
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
 **Key Points:**
-- ✅ **Free to use, modify, and distribute**
-- ✅ **Source code must remain open**
-- ✅ **Network copyleft**: Web service modifications must be shared
-- ✅ **Commercial use allowed** under AGPL terms
+- **Free to use, modify, and distribute**
+- **Source code must remain open**
+- **Network copyleft**: Web service modifications must be shared
+- **Commercial use allowed** under AGPL terms
 
 See [LICENSE](LICENSE) for the full license text.
 

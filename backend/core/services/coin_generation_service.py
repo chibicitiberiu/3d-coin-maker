@@ -1,11 +1,22 @@
+import logging
 import uuid
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from uuid import UUID
 
 from core.interfaces.image_processor import IImageProcessor
 from core.interfaces.rate_limiter import IRateLimiter
 from core.interfaces.stl_generator import ISTLGenerator
 from core.interfaces.storage import IFileStorage
+from core.models import (
+    CoinParameters,
+    ImageProcessingParameters,
+    ProcessingError,
+    RateLimitError,
+    ValidationError,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class CoinGenerationService:
@@ -23,46 +34,66 @@ class CoinGenerationService:
         self.stl_generator = stl_generator
         self.rate_limiter = rate_limiter
 
-    def create_generation(self, uploaded_file, ip_address: str) -> tuple[bool, str, str | None]:
+    def create_generation(self, uploaded_file, ip_address: str) -> UUID:
         """
         Create a new generation session.
-        Returns: (success, generation_id_or_error, error_message)
+
+        Args:
+            uploaded_file: The uploaded file object
+            ip_address: Client IP address for rate limiting
+
+        Returns:
+            UUID of the created generation session
+
+        Raises:
+            RateLimitError: If rate limit is exceeded
+            ValidationError: If uploaded file is invalid
+            ProcessingError: If file storage fails
         """
         # Check rate limits
         if not self.rate_limiter.is_allowed(ip_address, 'generation'):
-            return False, "rate_limit_exceeded", "Rate limit exceeded. Please try again later."
+            raise RateLimitError("Rate limit exceeded. Please try again later.")
 
         # Generate unique ID
-        generation_id = str(uuid.uuid4())
+        generation_id = uuid.uuid4()
 
         try:
             # Save uploaded file as heightmap since frontend already processed it
             heightmap_filename = "heightmap.png"
-            file_path = self.file_storage.save_file(uploaded_file, heightmap_filename, generation_id)
+            file_path = self.file_storage.save_file(uploaded_file, heightmap_filename, str(generation_id))
 
             # Validate image
             if not self.image_processor.validate_image(str(file_path)):
-                self.file_storage.delete_file(heightmap_filename, generation_id)
-                return False, "invalid_image", "Invalid image format."
+                self.file_storage.delete_file(heightmap_filename, str(generation_id))
+                raise ValidationError("Invalid image format.")
 
             # Record the operation
             self.rate_limiter.record_operation(ip_address, 'generation')
 
-            return True, generation_id, None
+            return generation_id
 
         except Exception as e:
-            return False, "storage_error", f"Error saving file: {str(e)}"
+            if isinstance(e, RateLimitError | ValidationError):
+                raise
+            raise ProcessingError(f"Error saving file: {str(e)}") from e
 
-    def process_image(self, generation_id: str, parameters: dict[str, Any]) -> tuple[bool, str | None]:
+    def process_image(self, generation_id: str, parameters: ImageProcessingParameters) -> None:
         """
         Process image with given parameters.
-        Returns: (success, error_message)
+
+        Args:
+            generation_id: Unique identifier for the generation session
+            parameters: Image processing parameters
+
+        Raises:
+            ValidationError: If original image not found or parameters invalid
+            ProcessingError: If image processing fails
         """
         try:
             # Get original image path
-            original_path = self.file_storage.get_file_path(f"original_{parameters.get('filename', 'image')}", generation_id)
+            original_path = self.file_storage.get_file_path(f"original_{parameters.filename}", generation_id)
             if not original_path:
-                return False, "Original image not found."
+                raise ValidationError("Original image not found.")
 
             # Process image
             processed_image = self.image_processor.process_image(str(original_path), parameters)
@@ -80,40 +111,49 @@ class CoinGenerationService:
             processed_image.save(processed_path)
             heightmap.save(heightmap_path)
 
-            return True, None
-
         except Exception as e:
-            return False, f"Error processing image: {str(e)}"
+            if isinstance(e, ValidationError):
+                raise
+            raise ProcessingError(f"Error processing image: {str(e)}") from e
 
-    def generate_stl(self, generation_id: str, coin_parameters: dict[str, Any], progress_callback=None) -> tuple[bool, str | None]:
+    def generate_stl(
+        self,
+        generation_id: str,
+        coin_parameters: CoinParameters,
+        progress_callback: Callable[[int, str], None] | None = None
+    ) -> None:
         """
         Generate STL file from processed image.
-        Returns: (success, error_message)
+
+        Args:
+            generation_id: Unique identifier for the generation session
+            coin_parameters: Coin generation parameters
+            progress_callback: Optional callback for progress updates
+
+        Raises:
+            ValidationError: If parameters invalid or heightmap not found
+            ProcessingError: If STL generation fails
         """
         try:
             # Validate parameters
             if not self.stl_generator.validate_parameters(coin_parameters):
-                return False, "Invalid coin parameters."
+                raise ValidationError("Invalid coin parameters.")
 
             # Get heightmap path
             heightmap_path = self.file_storage.get_file_path("heightmap.png", generation_id)
             if not heightmap_path:
-                return False, "Heightmap not found. Please process image first."
+                raise ValidationError("Heightmap not found. Please process image first.")
 
             # Generate STL
             stl_filename = "coin.stl"
             stl_path = self.file_storage.temp_dir / generation_id / stl_filename
 
-            success, error_message = self.stl_generator.generate_stl(heightmap_path, coin_parameters, stl_path, progress_callback)
-
-            if not success:
-                # Return the specific error message from the STL generator
-                return False, error_message or "STL generation failed with unknown error"
-
-            return True, None
+            self.stl_generator.generate_stl(heightmap_path, coin_parameters, stl_path, progress_callback)
 
         except Exception as e:
-            return False, f"Error generating STL: {str(e)}"
+            if isinstance(e, ValidationError | ProcessingError):
+                raise
+            raise ProcessingError(f"Error generating STL: {str(e)}") from e
 
     def get_file_path(self, generation_id: str, file_type: str) -> Path | None:
         """Get path to a generated file."""
@@ -145,5 +185,6 @@ class CoinGenerationService:
             for filename in files_to_delete:
                 self.file_storage.delete_file(filename, generation_id)
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to cleanup files for generation {generation_id}: {e}")
             return False

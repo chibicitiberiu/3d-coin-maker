@@ -7,12 +7,12 @@ unified task queue abstraction.
 """
 
 import logging
-from typing import Any
 
 from celery.exceptions import NotRegistered
 from celery.result import AsyncResult
 
 from core.interfaces.task_queue import TaskQueue, TaskResult, TaskStatus
+from core.models import TaskProgress
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class CeleryTaskQueue(TaskQueue):
     def __init__(self):
         """Initialize the Celery task queue."""
         # Import the specific Celery app instance instead of using current_app
-        from celery_app import app
+        from workers.celery_app import app
         self.app = app
         logger.info("Initialized Celery task queue")
 
@@ -44,7 +44,7 @@ class CeleryTaskQueue(TaskQueue):
         self,
         task_name: str,
         args: tuple = (),
-        kwargs: dict[str, Any] | None = None,
+        kwargs: dict[str, str | int | float | bool] | None = None,
         max_retries: int = 3,
         retry_delay: int = 60
     ) -> str:
@@ -67,13 +67,13 @@ class CeleryTaskQueue(TaskQueue):
         try:
             # Map simple task name to full Celery task name
             celery_task_name = self.TASK_NAME_MAPPING.get(task_name, task_name)
-            print(f"DEBUG: Mapping {task_name} -> {celery_task_name}")
+            logger.debug(f"Mapping {task_name} -> {celery_task_name}")
 
             # Get the task by name
             task = self.app.tasks.get(celery_task_name)
-            print(f"DEBUG: Found task: {task}")
+            logger.debug(f"Found task: {task}")
             if task is None:
-                print(f"DEBUG: Available tasks: {list(self.app.tasks.keys())}")
+                logger.debug(f"Available tasks: {list(self.app.tasks.keys())}")
                 raise NotRegistered(f"Task {celery_task_name} is not registered")
 
             # Execute the task asynchronously
@@ -128,7 +128,20 @@ class CeleryTaskQueue(TaskQueue):
             elif task_status == TaskStatus.PROCESSING:
                 # Celery stores progress in result.info for PROGRESS state
                 if hasattr(result, 'info') and isinstance(result.info, dict):
-                    progress_data = result.info
+                    # Convert dict to TaskProgress if it has the right structure
+                    info = result.info
+                    if 'progress' in info and 'step' in info:
+                        progress_data = TaskProgress(
+                            progress=info['progress'],
+                            step=info['step'],
+                            extra_data=info.get('extra_data')
+                        )
+                    else:
+                        # Fallback for incomplete data
+                        progress_data = TaskProgress(
+                            progress=info.get('progress', 0),
+                            step=info.get('step', 'unknown')
+                        )
 
             # Get retry count if available
             retry_count = 0
@@ -211,7 +224,7 @@ class CeleryTaskQueue(TaskQueue):
             logger.error(f"Failed to check Celery worker status: {str(e)}")
             return False
 
-    def get_queue_stats(self) -> dict[str, Any]:
+    def get_queue_stats(self) -> dict[str, int | str]:
         """
         Get Celery queue statistics.
 

@@ -6,38 +6,38 @@ A staged development plan for building a self-hostable web application that gene
 
 **Current Stage: Stage 1 (MVP) - 95% Complete**
 
-### ✅ Completed Features
-- ✅ Complete frontend UI with responsive two-panel layout
-- ✅ Image upload with drag & drop support and file validation
-- ✅ Real-time image processing with Photon WASM + Canvas fallback
-- ✅ All Stage 1 image processing controls (grayscale, brightness, contrast, gamma, invert)
-- ✅ All Stage 1 coin parameters (shape, size, thickness, relief depth)
-- ✅ Heightmap positioning controls (scale, offset, rotation)
-- ✅ Three-tab interface (Original, Preprocessed, Final Result)
-- ✅ STL viewer with Three.js and custom STL parser
-- ✅ FastAPI backend with proper API endpoints
-- ✅ Celery task queue for background processing
-- ✅ OpenSCAD integration for STL generation
-- ✅ File storage and cleanup system
-- ✅ Rate limiting and IP-based controls
-- ✅ Docker Compose deployment setup
-- ✅ Redis integration for caching and task management
-- ✅ Health check endpoint
+### [COMPLETED] Completed Features
+- [COMPLETED] Complete frontend UI with responsive two-panel layout
+- [COMPLETED] Image upload with drag & drop support and file validation
+- [COMPLETED] Real-time image processing with Photon WASM + Canvas fallback
+- [COMPLETED] All Stage 1 image processing controls (grayscale, brightness, contrast, gamma, invert)
+- [COMPLETED] All Stage 1 coin parameters (shape, size, thickness, relief depth)
+- [COMPLETED] Heightmap positioning controls (scale, offset, rotation)
+- [COMPLETED] Three-tab interface (Original, Preprocessed, Final Result)
+- [COMPLETED] STL viewer with Three.js and custom STL parser
+- [COMPLETED] FastAPI backend with proper API endpoints
+- [COMPLETED] Celery task queue for background processing
+- [COMPLETED] OpenSCAD integration for STL generation
+- [COMPLETED] File storage and cleanup system
+- [COMPLETED] Rate limiting and IP-based controls
+- [COMPLETED] Docker Compose deployment setup
+- [COMPLETED] Redis integration for caching and task management
+- [COMPLETED] Health check endpoint
 
-### ✅ Recently Completed
-- ✅ **Frontend-Backend integration** (MAJOR MILESTONE - fully implemented with real API calls)
-- ✅ **Complete API integration** (upload, process, generate, download, status endpoints)
-- ✅ **Parameter mapping and consistency** between frontend and backend
-- ✅ **Environment configuration** for API base URLs
+### [COMPLETED] Recently Completed
+- [COMPLETED] **Frontend-Backend integration** (MAJOR MILESTONE - fully implemented with real API calls)
+- [COMPLETED] **Complete API integration** (upload, process, generate, download, status endpoints)
+- [COMPLETED] **Parameter mapping and consistency** between frontend and backend
+- [COMPLETED] **Environment configuration** for API base URLs
 
 ### 🚧 In Progress/Partial
 - 🚧 Error handling and user feedback (90% - could use more sophisticated error messaging)
 
-### ❌ Missing Features
-- ❌ Comprehensive testing (unit, integration, e2e tests)
-- ❌ Performance optimization
-- ❌ Security hardening for production
-- ❌ Component refactoring (break down monolithic +page.svelte)
+### [NOT STARTED] Missing Features
+- [NOT STARTED] Comprehensive testing (unit, integration, e2e tests)
+- [NOT STARTED] Performance optimization
+- [NOT STARTED] Security hardening for production
+- [NOT STARTED] Component refactoring (break down monolithic +page.svelte)
 
 **Next Priority:** Implement comprehensive testing suite to ensure production readiness.
 

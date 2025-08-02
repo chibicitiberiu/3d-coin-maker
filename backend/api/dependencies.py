@@ -1,25 +1,38 @@
 """
 FastAPI Dependency Injection
 
-Provides dependency injection for FastAPI routes using the existing
-application container and services.
+Provides dependency injection for FastAPI routes using the new
+service container system.
 """
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request
 
-from core.containers.application import container
 from core.interfaces.task_queue import TaskQueue
+from core.service_container import ServiceContainer
 from core.services.coin_generation_service import CoinGenerationService
 
 
-def get_coin_service() -> CoinGenerationService:
+def get_services(request: Request) -> ServiceContainer:
+    """Get the service container from the FastAPI app state."""
+    if not hasattr(request.app.state, 'services'):
+        raise HTTPException(
+            status_code=500,
+            detail="Services not available - application not properly initialized"
+        )
+    return request.app.state.services
+
+
+# Create dependency singletons at module level
+_services_dep = Depends(get_services)
+
+def get_coin_service(services: ServiceContainer = _services_dep) -> CoinGenerationService:
     """Get the coin generation service instance."""
-    return container.coin_generation_service()
+    return services.get_coin_service()
 
 
-def get_task_queue() -> TaskQueue:
+def get_task_queue(services: ServiceContainer = _services_dep) -> TaskQueue:
     """Get the task queue instance."""
-    return container.task_queue()
+    return services.get_task_queue()
 
 
 def get_client_ip(request: Request) -> str:
@@ -45,6 +58,8 @@ def get_client_ip(request: Request) -> str:
 
 
 # Dependency aliases for cleaner route signatures
+# Note: These should be used in function parameters like: coin_service: CoinGenerationService = CoinServiceDep
 CoinServiceDep = Depends(get_coin_service)
 TaskQueueDep = Depends(get_task_queue)
 ClientIPDep = Depends(get_client_ip)
+ServicesDep = Depends(get_services)

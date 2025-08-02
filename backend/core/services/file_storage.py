@@ -1,20 +1,17 @@
 import time
 from pathlib import Path
 
-from constants import ProcessingConstants
+from core.constants import ProcessingConstants
 from core.interfaces.storage import IFileStorage, UploadedFile
-
-# Import settings
-from fastapi_settings import settings
+from core.services.path_resolver import path_resolver
 
 
 class FileSystemStorage(IFileStorage):
     """File system implementation of IFileStorage."""
 
-    def __init__(self):
-        temp_dir_path = settings.temp_dir
-        self._temp_dir = Path(temp_dir_path)
-        self._temp_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, temp_dir: str | None = None):
+        # Use path resolver for consistent temp directory handling
+        self._temp_dir = path_resolver.get_temp_dir(temp_dir)
 
     @property
     def temp_dir(self) -> Path:

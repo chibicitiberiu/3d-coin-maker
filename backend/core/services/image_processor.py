@@ -1,8 +1,12 @@
-from typing import Any
+import logging
 
 from PIL import Image, ImageEnhance
 
+from core.constants import ProcessingConstants
 from core.interfaces.image_processor import IImageProcessor
+from core.models import GrayscaleMethod, ImageProcessingParameters
+
+logger = logging.getLogger(__name__)
 
 
 class PILImageProcessor(IImageProcessor):
@@ -15,10 +19,11 @@ class PILImageProcessor(IImageProcessor):
         try:
             with Image.open(image_path) as img:
                 return img.format in self.SUPPORTED_FORMATS
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Could not validate image format for {image_path}: {e}")
             return False
 
-    def process_image(self, image_path: str, parameters: dict[str, Any]) -> Image.Image:
+    def process_image(self, image_path: str, parameters: ImageProcessingParameters) -> Image.Image:
         """Process image with given parameters and return PIL Image."""
         with Image.open(image_path) as img:
             # Convert to RGB if needed
@@ -26,26 +31,22 @@ class PILImageProcessor(IImageProcessor):
                 img = img.convert('RGB')
 
             # Apply grayscale conversion
-            grayscale_method = parameters.get('grayscale_method', 'luminance')
-            processed_img = self._apply_grayscale(img, grayscale_method)
+            processed_img = self._apply_grayscale(img, parameters.grayscale_method)
 
             # Apply brightness adjustment
-            brightness = parameters.get('brightness', 0)
-            if brightness != 0:
-                processed_img = self._adjust_brightness(processed_img, brightness)
+            if parameters.brightness != 0:
+                processed_img = self._adjust_brightness(processed_img, parameters.brightness)
 
             # Apply contrast adjustment
-            contrast = parameters.get('contrast', 100)
-            if contrast != 100:
-                processed_img = self._adjust_contrast(processed_img, contrast)
+            if parameters.contrast != ProcessingConstants.DEFAULT_CONTRAST_VALUE:
+                processed_img = self._adjust_contrast(processed_img, parameters.contrast)
 
             # Apply gamma correction
-            gamma = parameters.get('gamma', 1.0)
-            if gamma != 1.0:
-                processed_img = self._apply_gamma(processed_img, gamma)
+            if parameters.gamma != 1.0:
+                processed_img = self._apply_gamma(processed_img, parameters.gamma)
 
             # Apply inversion if requested
-            if parameters.get('invert', False):
+            if parameters.invert:
                 processed_img = self._invert_colors(processed_img)
 
             return processed_img
@@ -58,45 +59,46 @@ class PILImageProcessor(IImageProcessor):
 
         return processed_image
 
-    def _apply_grayscale(self, img: Image.Image, method: str) -> Image.Image:
+    def _apply_grayscale(self, img: Image.Image, method: GrayscaleMethod) -> Image.Image:
         """Apply grayscale conversion based on method."""
-        if method == 'average':
+        if method == GrayscaleMethod.AVERAGE:
             return img.convert('L')
-        elif method == 'luminance':
+        elif method == GrayscaleMethod.LUMINANCE:
             # Standard luminance formula
             return img.convert('L')
-        elif method == 'red':
+        elif method == GrayscaleMethod.RED:
             return img.getchannel('R').convert('L')
-        elif method == 'green':
+        elif method == GrayscaleMethod.GREEN:
             return img.getchannel('G').convert('L')
-        elif method == 'blue':
+        elif method == GrayscaleMethod.BLUE:
             return img.getchannel('B').convert('L')
         else:
             return img.convert('L')
 
     def _adjust_brightness(self, img: Image.Image, brightness: int) -> Image.Image:
         """Adjust brightness (-100 to +100)."""
-        factor = 1.0 + (brightness / 100.0)
+        factor = 1.0 + (brightness / ProcessingConstants.DEFAULT_BRIGHTNESS_FACTOR)
         enhancer = ImageEnhance.Brightness(img)
         return enhancer.enhance(factor)
 
     def _adjust_contrast(self, img: Image.Image, contrast: int) -> Image.Image:
         """Adjust contrast (0% to 300%)."""
-        factor = contrast / 100.0
+        factor = contrast / ProcessingConstants.DEFAULT_BRIGHTNESS_FACTOR
         enhancer = ImageEnhance.Contrast(img)
         return enhancer.enhance(factor)
 
     def _apply_gamma(self, img: Image.Image, gamma: float) -> Image.Image:
         """Apply gamma correction."""
         # Create gamma correction lookup table
-        lut = [int(255 * ((i / 255.0) ** (1.0 / gamma))) for i in range(256)]
+        lut = [int(ProcessingConstants.GAMMA_LUT_MAX_VALUE * ((i / ProcessingConstants.GAMMA_LUT_MAX_VALUE) ** (1.0 / gamma)))
+               for i in range(ProcessingConstants.GAMMA_LUT_SIZE)]
         return img.point(lut)
 
     def _invert_colors(self, img: Image.Image) -> Image.Image:
         """Invert image colors."""
         if img.mode == 'L':
-            lut = [255 - i for i in range(256)]
+            lut = [ProcessingConstants.GAMMA_LUT_MAX_VALUE - i for i in range(ProcessingConstants.GAMMA_LUT_SIZE)]
             return img.point(lut)
         else:
             # For RGB images
-            return Image.eval(img, lambda x: 255 - x)
+            return Image.eval(img, lambda x: ProcessingConstants.GAMMA_LUT_MAX_VALUE - x)

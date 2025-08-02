@@ -10,7 +10,8 @@ from uuid import UUID
 from fastapi import UploadFile
 from pydantic import BaseModel, Field, validator
 
-from constants import ValidationConstants
+from config.factory import settings
+from core.constants import ValidationConstants
 
 
 class ImageProcessingRequest(BaseModel):
@@ -81,10 +82,26 @@ class GenerationStatusResponse(BaseModel):
     stl_timestamp: int | None = None
 
 
+class ServiceStatus(BaseModel):
+    """Individual service status model."""
+    status: str
+    message: str | None = None
+    response_time_ms: float | None = None
+
+
+class QueueStats(BaseModel):
+    """Queue statistics model."""
+    pending: int = 0
+    active: int = 0
+    completed: int = 0
+    failed: int = 0
+
+
 class HealthCheckResponse(BaseModel):
     """Response model for health check."""
     status: str
-    services: dict
+    services: dict[str, ServiceStatus]
+    queue_stats: QueueStats | None = None
     timestamp: float
 
 
@@ -92,6 +109,27 @@ class ErrorResponse(BaseModel):
     """Standard error response model."""
     error: str
     detail: str | None = None
+
+
+class TaskStatusResponse(BaseModel):
+    """Response model for task status queries."""
+    status: str
+    progress: int = 0
+    step: str = "unknown"
+    error: str | None = None
+
+
+class FileAvailabilityResponse(BaseModel):
+    """Response model for file availability checks."""
+    has_original: bool = False
+    has_processed: bool = False
+    has_heightmap: bool = False
+
+
+class STLInfoResponse(BaseModel):
+    """Response model for STL file information."""
+    has_stl: bool
+    stl_timestamp: int | None = None
 
 
 # Custom validation for image uploads
@@ -108,9 +146,9 @@ def validate_image_file(file: UploadFile) -> UploadFile:
     Raises:
         ValueError: If file validation fails
     """
-    # Check file size (50MB limit)
-    if hasattr(file, 'size') and file.size and file.size > ValidationConstants.MAX_FILE_SIZE_BYTES:
-        raise ValueError("Image file too large. Maximum size is 50MB.")
+    # Check file size using configured limit
+    if hasattr(file, 'size') and file.size and file.size > settings.max_file_size_bytes:
+        raise ValueError(f"Image file too large. Maximum size is {settings.max_file_size_mb}MB.")
 
     # Check content type
     if file.content_type:

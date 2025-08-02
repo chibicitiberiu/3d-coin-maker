@@ -39,33 +39,33 @@ Web App:
 
 ## Migration Phases
 
-### Phase 1: Task Queue Abstraction (Week 1) ✅ **COMPLETED**
+### Phase 1: Task Queue Abstraction (Week 1) - COMPLETED
 **Goal**: Abstract task queue implementation to support both Celery and APScheduler
 
-#### ✅ 1.1 Task Queue Interface - IMPLEMENTED
+#### [COMPLETED] 1.1 Task Queue Interface - IMPLEMENTED
 - `backend/core/interfaces/task_queue.py` - Complete with TaskStatus enum, TaskResult class, and ProgressCallback
 - Provides unified interface for both Celery and APScheduler
 - Includes advanced features like retry handling, progress tracking, and health checks
 
-#### ✅ 1.2 Celery Adapter - IMPLEMENTED
+#### [COMPLETED] 1.2 Celery Adapter - IMPLEMENTED
 - `backend/core/services/celery_task_queue.py` - Full Celery wrapper implementation
 - Maps task names to full Celery task paths
 - Supports progress tracking, cancellation, and queue statistics
 - Handles Celery-specific status mapping and worker detection
 
-#### ✅ 1.3 APScheduler Adapter - IMPLEMENTED
+#### [COMPLETED] 1.3 APScheduler Adapter - IMPLEMENTED
 - `backend/core/services/apscheduler_task_queue.py` - Complete APScheduler implementation
 - In-memory result storage with cleanup functionality
 - Exponential backoff retry logic
 - Progress tracking and comprehensive statistics
 
-#### ✅ 1.4 Task Functions - IMPLEMENTED
+#### [COMPLETED] 1.4 Task Functions - IMPLEMENTED
 - `backend/core/services/task_functions.py` - Pure task function implementations
 - Extracted business logic for both Celery and APScheduler use
 - Custom error handling with ProcessingError and RetryableError
 - Progress callback integration
 
-#### ✅ 1.5 Dependency Injection - IMPLEMENTED
+#### [COMPLETED] 1.5 Dependency Injection - IMPLEMENTED
 - `backend/core/containers/application.py` - Updated with task queue abstraction
 - Environment-based switching (USE_CELERY flag)
 - APScheduler initialization with task registration
@@ -73,47 +73,55 @@ Web App:
 
 **Status**: Phase 1 is 100% complete and tested. The system can now run with either Celery or APScheduler based on environment configuration.
 
-### Phase 2: Eel Integration (Week 2) ⚠️ **NOT STARTED**
+### Phase 2: Eel Integration (Week 2) [WARNING] **NOT STARTED**
 **Goal**: Integrate Eel for desktop wrapper functionality
 
-#### ❌ 2.1 Install Dependencies - PENDING
+#### [NOT STARTED] 2.1 Install Dependencies - PENDING
 ```bash
 cd backend/
 poetry add eel apscheduler
 ```
 **Note**: APScheduler already added, Eel needs to be added
 
-#### ❌ 2.2 Create Desktop Entry Point - PENDING
+#### [NOT STARTED] 2.2 Create Desktop Entry Point - PENDING
 ```python
-# backend/desktop_main.py - NOT YET CREATED
+# backend/desktop_main.py - UPDATED FOR FASTAPI
 import eel
 import os
 import sys
 import threading
 import time
+import uvicorn
 from pathlib import Path
-from django.core.management import execute_from_command_line
-from django.core.wsgi import get_wsgi_application
+from fastapi_main import app
+from fastapi_settings import settings
 
-def start_django_server():
-    """Start Django development server in background thread"""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'coin_maker.settings')
-    os.environ.setdefault('USE_CELERY', 'false')
+def start_fastapi_server():
+    """Start FastAPI server in background thread"""
+    os.environ.setdefault('USE_CELERY', 'false')  # Force APScheduler mode
     
-    # Start Django server
-    execute_from_command_line(['manage.py', 'runserver', '127.0.0.1:8000'])
+    # Configure for desktop mode
+    config = uvicorn.Config(
+        app,
+        host='127.0.0.1',
+        port=8000,
+        log_level='info',
+        access_log=False  # Reduce console noise
+    )
+    server = uvicorn.Server(config)
+    server.run()
 
 def main():
     # Set up paths
     backend_dir = Path(__file__).parent
     frontend_build_dir = backend_dir.parent / 'frontend' / 'build'
     
-    # Start Django in background thread
-    django_thread = threading.Thread(target=start_django_server, daemon=True)
-    django_thread.start()
+    # Start FastAPI in background thread
+    fastapi_thread = threading.Thread(target=start_fastapi_server, daemon=True)
+    fastapi_thread.start()
     
-    # Wait for Django to start
-    time.sleep(3)
+    # Wait for FastAPI to start
+    time.sleep(2)  # Faster startup than Django
     
     # Initialize Eel with built frontend
     eel.init(str(frontend_build_dir))
@@ -129,7 +137,7 @@ if __name__ == '__main__':
     main()
 ```
 
-#### ❌ 2.3 Add Native File Dialogs - PENDING
+#### [NOT STARTED] 2.3 Add Native File Dialogs - PENDING
 ```python
 # backend/desktop_main.py (additions)
 import tkinter as tk
@@ -165,10 +173,10 @@ def save_file_dialog(default_filename="coin.stl"):
     return file_path
 ```
 
-### Phase 3: Frontend Adaptations (Week 2-3) ❌ **NOT STARTED**
+### Phase 3: Frontend Adaptations (Week 2-3) [NOT STARTED] **NOT STARTED**
 **Goal**: Adapt frontend for both web and desktop contexts
 
-#### ❌ 3.1 Platform Detection - PENDING
+#### [NOT STARTED] 3.1 Platform Detection - PENDING
 ```typescript
 // frontend/src/lib/platform.ts
 export const isDesktopApp = () => {
@@ -180,7 +188,7 @@ export const isWebApp = () => {
 };
 ```
 
-#### ❌ 3.2 File Handling Abstraction - PENDING
+#### [NOT STARTED] 3.2 File Handling Abstraction - PENDING
 ```typescript
 // frontend/src/lib/fileHandler.ts
 import { isDesktopApp } from './platform';
@@ -243,7 +251,7 @@ export class FileHandler {
 }
 ```
 
-#### ❌ 3.3 Update Main Component - PENDING
+#### [NOT STARTED] 3.3 Update Main Component - PENDING
 ```svelte
 <!-- frontend/src/routes/+page.svelte (minimal changes) -->
 <script lang="ts">
@@ -589,35 +597,40 @@ jobs:
 | 4-5 | Packaging | PyInstaller setup, CI/CD pipeline |
 | 5-6 | Testing & Polish | Cross-platform testing, documentation |
 
-## Current Progress Summary (Updated 2025-08-01)
+## Current Progress Summary (Updated 2025-08-02)
 
-### ✅ Completed Work
+### Completed Work
 **Phase 1: Task Queue Abstraction** - 100% Complete
-- Task queue interface with comprehensive API
-- Full Celery adapter implementation
-- Complete APScheduler implementation with advanced features
-- Pure task function extraction
-- Dependency injection system updated
-- Docker compose APScheduler mode
-- Environment-based switching working
+- Task queue interface with comprehensive API (`core/interfaces/task_queue.py`)
+- Full Celery adapter implementation (`core/services/celery_task_queue.py`)
+- Complete APScheduler implementation with advanced features (`core/services/apscheduler_task_queue.py`)
+- Pure task function extraction (`core/services/task_functions.py`)
+- Dependency injection system updated (`core/containers/application.py`)
+- Docker compose APScheduler mode (`docker-compose.dev.apscheduler.yml`)
+- Environment-based switching working via `USE_CELERY` flag
 
-**FastAPI Migration** - 100% Complete ✅ **NEW**
-- Complete FastAPI application (`fastapi_main.py`) with all endpoints
-- Pydantic models replacing Django serializers with better validation
+**FastAPI Migration** - 100% Complete
+- Complete FastAPI application (`fastapi_main.py`) with all REST endpoints
+- Pydantic models (`fastapi_models.py`) with comprehensive validation
+- Dependency injection system (`fastapi_dependencies.py`)
+- Settings management (`fastapi_settings.py`)
 - Automatic OpenAPI/Swagger documentation at `/api/docs`
 - 60% faster startup time vs Django (2-4s vs 8-12s)
 - Better type safety and async-ready architecture
 - Seamless integration with existing task queue abstraction
+- HMM + Manifold3D integration for high-performance STL generation
 
 **Current Capabilities:**
-- System can run in either Celery (web) or APScheduler (desktop) mode
+- System runs in either Celery (web) or APScheduler (desktop) mode
 - FastAPI backend with automatic documentation and validation
 - Seamless task execution with either backend
 - Progress tracking and retry logic implemented
-- Rate limiting and error handling preserved
+- Rate limiting with Redis/memory fallback
+- Error handling and file cleanup preserved
 - Desktop-optimized performance and bundle size
+- Modern async architecture ready for Eel integration
 
-### ⚠️ Remaining Work
+### Remaining Work
 **Phase 2: Eel Integration** - 0% Complete
 - Need to add Eel dependency
 - Create desktop_main.py entry point
@@ -637,33 +650,83 @@ jobs:
 - Cross-platform testing
 - Documentation updates
 
-### 🎯 Immediate Next Steps
+### [REFACTOR] Critical Backend Refactoring (Before Eel Integration)
 
-1. **Start Phase 2**: Begin Eel integration
-   - Install Eel dependency: `poetry add eel`
-   - Create desktop_main.py with basic Eel wrapper
-   - Test basic desktop app functionality
+**PRIORITY 0: Backend Refactoring** (Est: 4-6 hours - will save 2-3 days later)
 
-2. **Frontend Platform Detection**: 
-   - Create platform.ts utility
-   - Add fileHandler.ts abstraction
-   - Test web compatibility
+The following refactors will significantly accelerate desktop implementation:
 
-3. **Build System Setup**:
-   - Configure desktop build mode
-   - Create PyInstaller spec file
-   - Test packaging pipeline
+#### [TARGET] **CRITICAL REFACTORS** (Direct desktop migration acceleration)
 
-4. **Integration Testing**:
-   - Verify APScheduler mode works in desktop context
-   - Test file generation and download flows
-   - Validate performance matches web version
+**1. Desktop-Specific Settings Configuration** (30 min)
+- **Issue**: Current settings assume web deployment with Redis/Celery defaults
+- **Solution**: Create `DesktopSettings` class inheriting from `Settings` with desktop-optimized defaults
+- **Impact**: Eliminates environment variable management in desktop mode
+- **Files**: `fastapi_settings.py`
+
+**2. Path Resolution Abstraction** (1 hour)  
+- **Issue**: Hardcoded paths assume web deployment structure
+- **Solution**: Create `PathResolver` service handling web vs desktop path differences
+- **Impact**: Single place to manage frontend build paths, temp directories, etc.
+- **Files**: New `core/services/path_resolver.py`
+
+**3. Application Factory Pattern** (2 hours)
+- **Issue**: `fastapi_main.py` is 424 lines with hardcoded initialization  
+- **Solution**: Extract app creation into `create_app(desktop_mode=False)` factory function
+- **Impact**: Clean separation between web/desktop app initialization
+- **Files**: `fastapi_main.py` → split into `app_factory.py` + smaller main
+
+#### [QUICK] **QUICK WINS** (Easy wins with immediate benefit)
+
+**4. Environment Detection Utility** (15 min)
+- **Solution**: Single `is_desktop_mode()` function with consistent logic
+- **Files**: Enhance existing `fastapi_settings.py` property
+
+**5. CORS Configuration Factory** (15 min)
+- **Solution**: Desktop mode disables CORS or uses localhost-only settings
+- **Files**: `fastapi_main.py` CORS middleware setup
+
+**6. Lifecycle Manager** (1 hour)
+- **Solution**: Create `LifecycleManager` for clean startup/shutdown in both modes
+- **Files**: New `core/services/lifecycle_manager.py`
+
+### [TARGET] Implementation Plan (Updated)
+
+**PRIORITY 1: Critical Refactors** (Est: 4-6 hours)
+1. Desktop Settings configuration
+2. Path Resolution abstraction  
+3. Application Factory pattern
+4. Environment Detection + CORS fixes
+
+**PRIORITY 2: Eel Integration** (Est: 1-2 days - accelerated by refactors)
+1. Install Eel dependency: `cd backend && poetry add eel`
+2. Create `backend/desktop_main.py` using app factory
+3. Add native file dialogs using tkinter
+4. Test basic desktop app functionality with APScheduler mode
+
+**PRIORITY 3: Frontend Platform Detection** (Est: 1 day)
+1. Create `frontend/src/lib/platform.ts` utility
+2. Add `frontend/src/lib/fileHandler.ts` abstraction
+3. Update main component for dual context support
+4. Test web compatibility maintained
+
+**PRIORITY 4: Build System Setup** (Est: 2-3 days)
+1. Configure desktop build mode in Vite
+2. Create PyInstaller spec file
+3. Create build scripts for cross-platform
+4. Test packaging pipeline
+
+**PRIORITY 5: Integration Testing** (Est: 1-2 days)
+1. Verify APScheduler mode works in desktop context
+2. Test file generation and download flows
+3. Validate performance matches web version
+4. Cross-platform compatibility testing
 
 ## Timeline Adjustment
 
 **Original Estimate**: 4-6 weeks  
-**Progress**: ~40% complete (Phase 1 + FastAPI migration done)  
-**Remaining**: ~2-3 weeks for phases 2-6  
-**Risk**: Build system and packaging may require additional time, but FastAPI reduces bundle complexity
+**Current Progress**: ~50% complete (Phase 1 + FastAPI migration fully done)  
+**Remaining**: ~1-2 weeks for phases 2-6  
+**Acceleration**: FastAPI migration eliminates Django complexity, reducing bundle size and startup time significantly
 
 This migration plan maintains the existing web functionality while creating a robust desktop application suitable for open-source distribution.
