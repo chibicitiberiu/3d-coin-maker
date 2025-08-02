@@ -7,6 +7,8 @@ replacing the Django-based Celery configuration.
 
 
 
+import os
+
 from celery import Celery
 
 # Import task functions and register them
@@ -128,6 +130,13 @@ def cleanup_old_files_task(self):
         if self.request.retries < 2:
             raise self.retry(exc=exc, countdown=300) from exc  # 5 minute delay
         return {'success': False, 'error': str(exc)}
+
+# Configure broker and result backend from environment
+redis_url = os.getenv('REDIS_URL', 'redis://redis:6379/0')
+app.conf.update(
+    broker_url=redis_url,
+    result_backend=redis_url,
+)
 
 if __name__ == '__main__':
     app.start()

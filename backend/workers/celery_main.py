@@ -19,11 +19,8 @@ def create_celery_worker_app():
     settings = web_app.settings
 
     # Configure Celery with settings from the service container
+    # Note: broker_url and result_backend are already set in celery_app.py
     celery_app.conf.update(
-        # Connection settings
-        broker_url=settings.celery_broker_url,
-        result_backend=settings.celery_result_backend,
-
         # Task retry settings from settings
         task_default_retry_delay=settings.task_retry_delay_seconds,
         task_max_retries=settings.max_task_retries,

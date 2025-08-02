@@ -55,7 +55,7 @@ services:
     depends_on:
       - redis
       - backend
-    command: celery -A celery_app worker --loglevel=debug
+    command: celery -A workers.celery_app worker --loglevel=debug
     profiles:
       - celery
 
@@ -75,7 +75,7 @@ services:
     depends_on:
       - redis
       - backend
-    command: celery -A celery_app beat --loglevel=debug --schedule=/app/temp/celerybeat-schedule
+    command: celery -A workers.celery_app beat --loglevel=debug --schedule=/app/temp/celerybeat-schedule
     profiles:
       - celery
 

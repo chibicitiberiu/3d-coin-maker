@@ -89,7 +89,8 @@ class ServiceContainer:
                 file_storage=self.get_file_storage(),
                 image_processor=self.get_image_processor(),
                 stl_generator=self.get_stl_generator(),
-                rate_limiter=self.get_rate_limiter()
+                rate_limiter=self.get_rate_limiter(),
+                task_queue=self.get_task_queue()
             )
         return self._services['coin_service']
 

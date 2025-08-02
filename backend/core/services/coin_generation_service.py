@@ -8,6 +8,7 @@ from core.interfaces.image_processor import IImageProcessor
 from core.interfaces.rate_limiter import IRateLimiter
 from core.interfaces.stl_generator import ISTLGenerator
 from core.interfaces.storage import IFileStorage
+from core.interfaces.task_queue import TaskQueue
 from core.models import (
     CoinParameters,
     ImageProcessingParameters,
@@ -28,11 +29,15 @@ class CoinGenerationService:
         image_processor: IImageProcessor,
         stl_generator: ISTLGenerator,
         rate_limiter: IRateLimiter,
+        task_queue: TaskQueue,
     ):
         self.file_storage = file_storage
         self.image_processor = image_processor
         self.stl_generator = stl_generator
         self.rate_limiter = rate_limiter
+        self.task_queue = task_queue
+        # Track generation_id -> task_id mappings
+        self._generation_tasks: dict[str, str] = {}
 
     def create_generation(self, uploaded_file, ip_address: str) -> UUID:
         """
@@ -177,6 +182,32 @@ class CoinGenerationService:
             return None
 
         return self.file_storage.get_file_path(filename, generation_id)
+
+    def get_task_id(self, generation_id: str) -> str | None:
+        """Get the task ID associated with a generation."""
+        return self._generation_tasks.get(generation_id)
+
+    def start_image_processing(self, generation_id: str, parameters: ImageProcessingParameters) -> str:
+        """Start background image processing task."""
+        task_id = self.task_queue.enqueue(
+            task_name='process_image_task',
+            args=(generation_id, parameters.model_dump()),
+            max_retries=3,
+            retry_delay=60
+        )
+        self._generation_tasks[generation_id] = task_id
+        return task_id
+
+    def start_stl_generation(self, generation_id: str, coin_parameters: CoinParameters) -> str:
+        """Start background STL generation task."""
+        task_id = self.task_queue.enqueue(
+            task_name='generate_stl_task',
+            args=(generation_id, coin_parameters.model_dump()),
+            max_retries=3,
+            retry_delay=60
+        )
+        self._generation_tasks[generation_id] = task_id
+        return task_id
 
     def cleanup_generation(self, generation_id: str) -> bool:
         """Clean up all files for a generation."""

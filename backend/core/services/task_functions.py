@@ -27,7 +27,7 @@ def process_image_task_func(
     generation_id: str,
     parameters: dict[str, str | int | float | bool],
     progress_callback: ProgressCallbackProtocol | None = None
-) -> TaskResponse:
+) -> dict[str, str | bool]:
     """
     Process an uploaded image with the given parameters.
 
@@ -73,7 +73,7 @@ def process_image_task_func(
             success=True,
             generation_id=generation_id,
             step='image_processed'
-        )
+        ).to_dict()
 
     except ProcessingError:
         # Don't wrap business logic errors
@@ -88,7 +88,7 @@ def generate_stl_task_func(
     generation_id: str,
     coin_parameters: dict[str, str | float],
     progress_callback: ProgressCallbackProtocol | None = None
-) -> TaskResponse:
+) -> dict[str, str | bool]:
     """
     Generate an STL file from processed image data.
 
@@ -142,7 +142,7 @@ def generate_stl_task_func(
             success=True,
             generation_id=generation_id,
             step='stl_generated'
-        )
+        ).to_dict()
 
     except ProcessingError:
         # Don't wrap business logic errors

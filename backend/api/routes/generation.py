@@ -8,7 +8,10 @@ from fastapi import APIRouter, HTTPException, status
 
 from api.dependencies import ClientIPDep, TaskQueueDep
 from api.models import CoinParametersRequest, TaskResponse
-from api.route_utils import enqueue_task_with_defaults, extract_generation_params
+from api.route_utils import (
+    enqueue_task_with_defaults,
+    extract_generation_params,
+)
 from core.interfaces.task_queue import TaskQueue
 
 router = APIRouter()

@@ -15,28 +15,43 @@ router = APIRouter()
 
 @router.post("/upload/", response_model=UploadResponse, status_code=201)
 async def upload_image(
-    file: UploadFile,
+    image: UploadFile,
     coin_service: CoinGenerationService = CoinServiceDep,
     client_ip: str = ClientIPDep
 ):
     """Upload and store an image file for processing."""
     # Validate file
-    validate_image_file(file)
-
-    # Generate unique ID
-    generation_id = coin_service.generate_id()
+    validate_image_file(image)
 
     try:
-        # Save original file
-        coin_service.save_original_image(generation_id, file)
+        # Create generation session (handles validation, rate limiting, and file storage)
+        generation_id = coin_service.create_generation(image, client_ip)
 
         return UploadResponse(
             generation_id=generation_id,
-            message=f"Image uploaded successfully: {file.filename}"
+            message=f"Image uploaded successfully: {image.filename}"
         )
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload image: {str(e)}"
-        ) from e
+        from core.models import ProcessingError, RateLimitError, ValidationError
+
+        if isinstance(e, RateLimitError):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=str(e)
+            ) from e
+        elif isinstance(e, ValidationError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            ) from e
+        elif isinstance(e, ProcessingError):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e)
+            ) from e
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to upload image: {str(e)}"
+            ) from e

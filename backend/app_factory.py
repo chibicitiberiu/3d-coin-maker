@@ -84,12 +84,24 @@ def _configure_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         """Handle validation errors with detailed messages."""
+        # Handle body serialization for different content types
+        body_info = None
+        if hasattr(exc, 'body') and exc.body is not None:
+            try:
+                # Try to serialize body to JSON
+                import json
+                json.dumps(exc.body)
+                body_info = exc.body
+            except (TypeError, ValueError):
+                # If body is not JSON serializable (e.g., FormData), provide a description
+                body_info = f"<{type(exc.body).__name__}>"
+
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "error": "Validation failed",
                 "detail": exc.errors(),
-                "body": exc.body if hasattr(exc, 'body') else None
+                "body": body_info
             }
         )
 

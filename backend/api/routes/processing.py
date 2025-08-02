@@ -6,10 +6,10 @@ Handles image processing task initiation.
 
 from fastapi import APIRouter, HTTPException, status
 
-from api.dependencies import ClientIPDep, TaskQueueDep
+from api.dependencies import ClientIPDep, CoinServiceDep
 from api.models import ImageProcessingRequest, TaskResponse
-from api.route_utils import enqueue_task_with_defaults, extract_generation_params
-from core.interfaces.task_queue import TaskQueue
+from api.route_utils import extract_image_processing_params
+from core.services.coin_generation_service import CoinGenerationService
 
 router = APIRouter()
 
@@ -17,19 +17,14 @@ router = APIRouter()
 @router.post("/process/", response_model=TaskResponse, status_code=202)
 async def process_image(
     request: ImageProcessingRequest,
-    task_queue: TaskQueue = TaskQueueDep,
+    coin_service: CoinGenerationService = CoinServiceDep,
     client_ip: str = ClientIPDep
 ):
     """Start image processing task."""
-    generation_id, parameters = extract_generation_params(request)
+    generation_id, parameters = extract_image_processing_params(request)
 
     try:
-        task_id = enqueue_task_with_defaults(
-            task_queue,
-            'process_image_task',
-            generation_id,
-            parameters
-        )
+        task_id = coin_service.start_image_processing(str(generation_id), parameters)
 
         return TaskResponse(
             task_id=task_id,

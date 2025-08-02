@@ -82,10 +82,10 @@ services:
     depends_on:
       - redis
       - backend
-    command: celery -A celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=1000
+    command: celery -A workers.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=1000
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "celery", "-A", "celery_app", "inspect", "ping"]
+      test: ["CMD", "celery", "-A", "workers.celery_app", "inspect", "ping"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -109,7 +109,7 @@ services:
     depends_on:
       - redis
       - backend
-    command: celery -A celery_app beat --loglevel=info --schedule=/app/data/celerybeat-schedule
+    command: celery -A workers.celery_app beat --loglevel=info --schedule=/app/data/celerybeat-schedule
     restart: unless-stopped
     logging:
       driver: "json-file"
