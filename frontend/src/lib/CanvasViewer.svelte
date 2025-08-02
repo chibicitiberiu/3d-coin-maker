@@ -5,7 +5,7 @@
 	// Props - all the data the canvas needs to render
 	export let processedImageData: ImageData | null = null;
 	export let coinSize = 30; // diameter in mm
-	export let coinThickness = 3; // in mm
+	export const coinThickness = 3; // in mm
 	export let coinShape: 'circle' | 'square' | 'hexagon' | 'octagon' = 'circle';
 	export let heightmapScale = 100; // percentage
 	export let offsetX = 0; // percentage of coin size

@@ -8,7 +8,7 @@ task queue systems, allowing the application to switch between them based on dep
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum
-from typing import Any
+from typing import Any, Protocol
 
 
 class TaskStatus(Enum):
@@ -49,6 +49,14 @@ class TaskResult:
             'progress': self.progress,
             'retry_count': self.retry_count
         }
+
+
+class ProgressCallbackProtocol(Protocol):
+    """Protocol for progress callback implementations."""
+
+    def update(self, progress: int, step: str, extra_data: dict[str, Any] | None = None) -> None:
+        """Update task progress."""
+        ...
 
 
 class ProgressCallback:

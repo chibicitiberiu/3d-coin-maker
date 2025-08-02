@@ -13,7 +13,7 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException, Request, UploadFile, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from core.interfaces.task_queue import TaskQueue
 from core.services.coin_generation_service import CoinGenerationService
@@ -49,6 +49,76 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def startup_event():
+    """Initialize task queue on application startup."""
+    from core.containers.application import initialize_task_queue
+    initialize_task_queue()
+
+
+# Helper functions
+def extract_generation_params(request_data) -> tuple[str, dict]:
+    """Extract generation ID and parameters from request data."""
+    parameters = request_data.dict()
+    generation_id = str(parameters['generation_id'])
+    return generation_id, parameters
+
+
+def enqueue_task_with_defaults(task_queue: TaskQueue, task_name: str, generation_id: str, parameters: dict) -> str:
+    """Enqueue a task with standard retry configuration."""
+    return task_queue.enqueue(
+        task_name=task_name,
+        args=(generation_id, parameters),
+        max_retries=3,
+        retry_delay=60
+    )
+
+
+async def _get_task_status_info(task_queue: TaskQueue, task_id: str | None) -> tuple[str, dict]:
+    """Get task status and info from task queue."""
+    if not task_id:
+        return 'UNKNOWN', {}
+
+    try:
+        task_result = task_queue.get_result(task_id)
+        if task_result:
+            task_status = task_result.status.value  # Convert enum to string
+            task_details = {
+                'progress': task_result.progress.get('progress', 0) if task_result.progress else 0,
+                'step': task_result.progress.get('step', 'unknown') if task_result.progress else 'unknown',
+                'error': task_result.error
+            }
+            return task_status, task_details
+        else:
+            return 'UNKNOWN', {'error': 'Task not found'}
+    except Exception as e:
+        return 'FAILURE', {'error': f'Error retrieving task status: {str(e)}'}
+
+
+async def _check_file_availability(coin_service: CoinGenerationService, generation_id: str) -> dict:
+    """Check availability of generated files."""
+    return {
+        'has_original': coin_service.get_file_path(generation_id, 'original') is not None,
+        'has_processed': coin_service.get_file_path(generation_id, 'processed') is not None,
+        'has_heightmap': coin_service.get_file_path(generation_id, 'heightmap') is not None,
+    }
+
+
+async def _get_stl_info(coin_service: CoinGenerationService, generation_id: str) -> tuple[bool, int | None]:
+    """Get STL file availability and timestamp."""
+    stl_path = coin_service.get_file_path(generation_id, 'stl')
+    has_stl = stl_path is not None and stl_path.exists()
+
+    stl_timestamp = None
+    if has_stl and stl_path is not None:
+        try:
+            stl_timestamp = int(stl_path.stat().st_mtime * 1000)  # milliseconds timestamp
+        except (OSError, AttributeError):
+            stl_timestamp = int(time.time() * 1000)
+
+    return has_stl, stl_timestamp
+
+
 # Custom exception handlers
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -59,18 +129,18 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         message = error["msg"]
         errors.append(f"{field}: {message}")
 
-    return HTTPException(
+    return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail={"error": "Validation failed", "details": errors}
+        content={"error": "Validation failed", "details": errors}
     )
 
 
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
     """Handle ValueError exceptions."""
-    return HTTPException(
+    return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail={"error": str(exc)}
+        content={"error": str(exc)}
     )
 
 
@@ -121,17 +191,9 @@ async def process_image(
 ) -> TaskResponse:
     """Process uploaded image with parameters."""
 
-    # Convert Pydantic model to dict for task queue
-    parameters = request_data.dict()
-    generation_id = str(parameters['generation_id'])
-
-    # Start background processing task
-    task_id = task_queue.enqueue(
-        task_name='process_image_task',
-        args=(generation_id, parameters),
-        max_retries=3,
-        retry_delay=60
-    )
+    # Extract parameters and start background processing task
+    generation_id, parameters = extract_generation_params(request_data)
+    task_id = enqueue_task_with_defaults(task_queue, 'process_image_task', generation_id, parameters)
 
     return TaskResponse(
         task_id=task_id,
@@ -147,17 +209,9 @@ async def generate_stl(
 ) -> TaskResponse:
     """Generate STL file from processed image."""
 
-    # Convert Pydantic model to dict for task queue
-    parameters = request_data.dict()
-    generation_id = str(parameters['generation_id'])
-
-    # Start background STL generation task
-    task_id = task_queue.enqueue(
-        task_name='generate_stl_task',
-        args=(generation_id, parameters),
-        max_retries=3,
-        retry_delay=60
-    )
+    # Extract parameters and start background STL generation task
+    generation_id, parameters = extract_generation_params(request_data)
+    task_id = enqueue_task_with_defaults(task_queue, 'generate_stl_task', generation_id, parameters)
 
     return TaskResponse(
         task_id=task_id,
@@ -176,60 +230,28 @@ async def generation_status(
     """Get status of generation process."""
 
     try:
-        # Check if any tasks exist for this generation
+        # Get task status information
         task_id = request.query_params.get('task_id')
+        task_status, task_details = await _get_task_status_info(task_queue, task_id)
 
-        if task_id:
-            # Get task status using the task queue abstraction
-            try:
-                task_result = task_queue.get_result(task_id)
-                if task_result:
-                    task_status = task_result.status.value  # Convert enum to string
-                    task_info = {
-                        'progress': task_result.progress.get('progress', 0) if task_result.progress else 0,
-                        'step': task_result.progress.get('step', 'unknown') if task_result.progress else 'unknown',
-                        'error': task_result.error
-                    }
-                else:
-                    task_status = 'UNKNOWN'
-                    task_info = {'error': 'Task not found'}
-            except Exception as e:
-                task_status = 'FAILURE'
-                task_info = {'error': f'Error retrieving task status: {str(e)}'}
-        else:
-            task_status = 'UNKNOWN'
-            task_info = {}
+        # Check file availability
+        file_info = await _check_file_availability(coin_service, generation_id)
 
-        # Check file availability and get timestamps
-        has_original = coin_service.get_file_path(generation_id, 'original') is not None
-        has_processed = coin_service.get_file_path(generation_id, 'processed') is not None
-        has_heightmap = coin_service.get_file_path(generation_id, 'heightmap') is not None
-
-        stl_path = coin_service.get_file_path(generation_id, 'stl')
-        has_stl = stl_path is not None and stl_path.exists()
-
-        # Get STL file timestamp for cache busting
-        stl_timestamp = None
-        if has_stl and stl_path is not None:
-            try:
-                stl_timestamp = int(stl_path.stat().st_mtime * 1000)  # milliseconds timestamp
-            except (OSError, AttributeError):
-                stl_timestamp = int(time.time() * 1000)
+        # Get STL file info
+        has_stl, stl_timestamp = await _get_stl_info(coin_service, generation_id)
 
         # Ensure progress is an integer
-        progress_value = task_info.get('progress', 0)
-        if not isinstance(progress_value, int):
-            progress_value = int(progress_value) if progress_value is not None else 0
+        progress_value = int(task_details.get('progress', 0) or 0)
 
         return GenerationStatusResponse(
             generation_id=UUID(generation_id) if isinstance(generation_id, str) else generation_id,
             status=task_status,
             progress=progress_value,
-            step=task_info.get('step', 'unknown'),
-            error=task_info.get('error'),
-            has_original=has_original,
-            has_processed=has_processed,
-            has_heightmap=has_heightmap,
+            step=task_details.get('step', 'unknown'),
+            error=task_details.get('error'),
+            has_original=file_info['has_original'],
+            has_processed=file_info['has_processed'],
+            has_heightmap=file_info['has_heightmap'],
             has_stl=has_stl,
             stl_timestamp=stl_timestamp
         )

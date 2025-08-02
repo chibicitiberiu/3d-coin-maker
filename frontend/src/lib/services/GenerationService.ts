@@ -212,13 +212,16 @@ export class GenerationService {
 					timeout: 5000 // Shorter timeout for polling
 				});
 
-				// Use actual progress and step from backend
+				// Map backend progress (0-100%) to frontend polling range (20-95%)
+				// This prevents progress from going backwards when backend starts at 0%
 				const backendProgress = status.progress || 0;
+				const mappedProgress = this.mapBackendProgressToFrontend(backendProgress);
 				const backendStep = status.step || 'unknown';
-				onProgress?.(backendProgress, backendStep);
+				onProgress?.(mappedProgress, backendStep);
 
 				if (status.status === 'SUCCESS') {
-					onProgress?.(100, status.step || 'completed');
+					// Use 95% here since 100% is reserved for final completion in main flow
+					onProgress?.(95, status.step || 'completed');
 					return status;
 				} else if (status.status === 'FAILURE') {
 					const backendError = new Error(status.error || 'STL generation failed');
@@ -286,6 +289,34 @@ export class GenerationService {
 	 */
 	async getStatus(generationId: string, taskId?: string): Promise<GenerationStatus> {
 		return await backendService.getGenerationStatus(generationId, taskId);
+	}
+
+	/**
+	 * Map backend progress (0-100%) to frontend polling range (20-95%)
+	 * This prevents progress from jumping backwards when backend reports start from 0%
+	 * 
+	 * Frontend progress flow:
+	 * - 5%: Uploading
+	 * - 15%: Starting generation
+	 * - 20%: Polling starts (backend 0% maps here)
+	 * - 20-95%: Backend progress mapped to this range
+	 * - 95%: Finalizing
+	 * - 100%: Complete
+	 */
+	private mapBackendProgressToFrontend(backendProgress: number): number {
+		// Backend progress: 0-100%
+		// Frontend polling range: 20-95% (75% total range)
+		const frontendStart = 20;
+		const frontendEnd = 95;
+		const frontendRange = frontendEnd - frontendStart; // 75%
+		
+		// Ensure backend progress is within bounds
+		const clampedBackendProgress = Math.max(0, Math.min(100, backendProgress));
+		
+		// Map backend 0-100% to frontend 20-95%
+		const mappedProgress = frontendStart + (clampedBackendProgress / 100) * frontendRange;
+		
+		return Math.round(mappedProgress);
 	}
 }
 

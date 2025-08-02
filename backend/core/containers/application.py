@@ -9,7 +9,7 @@ from core.services.coin_generation_service import CoinGenerationService
 from core.services.file_storage import FileSystemStorage
 from core.services.hmm_manifold_generator import HMMManifoldGenerator
 from core.services.image_processor import PILImageProcessor
-from core.services.redis_rate_limiter import RedisRateLimiter
+from core.services.smart_rate_limiter import SmartRateLimiter
 
 # Import settings
 from fastapi_settings import settings
@@ -21,10 +21,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # Configuration
     config = providers.Configuration()
 
-    # External resources
-    redis_client = providers.Singleton(
-        redis.from_url,
-        url=getattr(settings, 'redis_url', getattr(settings, 'CELERY_BROKER_URL', 'redis://localhost:6379/0'))
+    # External resources - Redis client for SmartRateLimiter to test connectivity
+    redis_client = providers.Factory(
+        lambda: None  # SmartRateLimiter will create its own Redis client when needed
     )
 
     # Core services
@@ -41,9 +40,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
         HMMManifoldGenerator
     )
 
+    # Rate Limiter - smart rate limiter with automatic Redis/Memory fallback
     rate_limiter = providers.Singleton(
-        RedisRateLimiter,
-        redis_client=redis_client
+        SmartRateLimiter
     )
 
     # Task Queue - conditionally provide Celery or APScheduler based on environment
@@ -60,6 +59,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         stl_generator=stl_generator,
         rate_limiter=rate_limiter
     )
+
 
 
 # Global container instance

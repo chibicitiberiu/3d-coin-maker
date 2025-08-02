@@ -10,7 +10,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from core.interfaces.task_queue import ProgressCallback
+from core.interfaces.task_queue import ProgressCallbackProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class RetryableError(Exception):
 def process_image_task_func(
     generation_id: str,
     parameters: dict[str, Any],
-    progress_callback: ProgressCallback | None = None
+    progress_callback: ProgressCallbackProtocol | None = None
 ) -> dict[str, Any]:
     """
     Process an uploaded image with the given parameters.
@@ -96,7 +96,7 @@ def process_image_task_func(
 def generate_stl_task_func(
     generation_id: str,
     coin_parameters: dict[str, Any],
-    progress_callback: ProgressCallback | None = None
+    progress_callback: ProgressCallbackProtocol | None = None
 ) -> dict[str, Any]:
     """
     Generate an STL file from processed image data.
@@ -165,7 +165,7 @@ def generate_stl_task_func(
 
 
 def cleanup_old_files_task_func(
-    progress_callback: ProgressCallback | None = None
+    progress_callback: ProgressCallbackProtocol | None = None
 ) -> dict[str, Any]:
     """
     Clean up old temporary files.
@@ -185,9 +185,8 @@ def cleanup_old_files_task_func(
     """
     try:
         # Import settings
-        from fastapi_settings import settings
-
         from core.containers.application import container
+        from fastapi_settings import settings
 
         logger.info("Starting file cleanup task")
 

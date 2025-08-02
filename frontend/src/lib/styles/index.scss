@@ -8,6 +8,7 @@
 @use './utilities';
 
 // Import PicoCSS as the foundation
+// Note: Using @import for PicoCSS as it may not fully support @use yet
 @import '@picocss/pico/scss/pico';
 
 // -----------------------------------------------------------------------------

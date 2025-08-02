@@ -10,16 +10,18 @@ from uuid import UUID
 from fastapi import UploadFile
 from pydantic import BaseModel, Field, validator
 
+from constants import ValidationConstants
+
 
 class ImageProcessingRequest(BaseModel):
     """Request model for image processing parameters."""
     generation_id: UUID
-    filename: str = Field(..., max_length=255)
+    filename: str = Field(..., max_length=ValidationConstants.MAX_FILENAME_LENGTH)
 
     # Image processing parameters (matching frontend API)
     grayscale_method: str = Field(default='luminance', pattern='^(average|luminance|red|green|blue)$')
-    brightness: int = Field(default=0, ge=-100, le=100)
-    contrast: int = Field(default=100, ge=0, le=300)
+    brightness: int = Field(default=0, ge=ValidationConstants.BRIGHTNESS_MIN, le=ValidationConstants.BRIGHTNESS_MAX)
+    contrast: int = Field(default=ValidationConstants.CONTRAST_MAX, ge=ValidationConstants.CONTRAST_MIN, le=ValidationConstants.CONTRAST_MAX)
     gamma: float = Field(default=1.0, ge=0.1, le=5.0)
     invert: bool = Field(default=False)
 
@@ -30,9 +32,9 @@ class CoinParametersRequest(BaseModel):
 
     # Coin parameters
     shape: str = Field(default='circle', pattern='^(circle|square|hexagon|octagon)$')
-    diameter: float = Field(default=30.0, gt=0.01)  # Minimum 0.01mm
-    thickness: float = Field(default=3.0, gt=0.01)  # Minimum 0.01mm
-    relief_depth: float = Field(default=1.0, gt=0.01)  # Minimum 0.01mm
+    diameter: float = Field(default=ValidationConstants.DEFAULT_DIAMETER, gt=0.01)  # Minimum 0.01mm
+    thickness: float = Field(default=ValidationConstants.DEFAULT_THICKNESS, gt=0.01)  # Minimum 0.01mm
+    relief_depth: float = Field(default=ValidationConstants.DEFAULT_RELIEF_DEPTH, gt=0.01)  # Minimum 0.01mm
 
     # Heightmap positioning
     scale: float = Field(default=100.0, gt=0.00001)  # Minimum 0.00001%
@@ -107,7 +109,7 @@ def validate_image_file(file: UploadFile) -> UploadFile:
         ValueError: If file validation fails
     """
     # Check file size (50MB limit)
-    if hasattr(file, 'size') and file.size and file.size > 52428800:
+    if hasattr(file, 'size') and file.size and file.size > ValidationConstants.MAX_FILE_SIZE_BYTES:
         raise ValueError("Image file too large. Maximum size is 50MB.")
 
     # Check content type

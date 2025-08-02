@@ -1,6 +1,7 @@
 import time
 from pathlib import Path
 
+from constants import ProcessingConstants
 from core.interfaces.storage import IFileStorage, UploadedFile
 
 # Import settings
@@ -36,7 +37,7 @@ class FileSystemStorage(IFileStorage):
                 # FastAPI UploadFile - has a .file attribute with file-like interface
                 file_data.file.seek(0)  # Ensure we're at the beginning
                 while True:
-                    chunk = file_data.file.read(8192)  # Read in 8KB chunks
+                    chunk = file_data.file.read(ProcessingConstants.FILE_CHUNK_SIZE)  # Read in 8KB chunks
                     if not chunk:
                         break
                     f.write(chunk)

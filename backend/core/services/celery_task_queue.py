@@ -9,7 +9,6 @@ unified task queue abstraction.
 import logging
 from typing import Any
 
-from celery import current_app
 from celery.exceptions import NotRegistered
 from celery.result import AsyncResult
 

@@ -146,7 +146,7 @@
 				</div>
 			{:else if currentStlGenerationError}
 				<div class="placeholder-content error-content">
-					<AlertTriangle size={48} class="error-icon" />
+					<AlertTriangle size={48} />
 					<h3>STL Generation Failed</h3>
 					<p class="error-message">{currentStlGenerationError}</p>
 					<small>Check the parameters and try again, or refresh the page if the issue persists</small>
@@ -302,10 +302,6 @@
 		color: var(--pico-del-color);
 	}
 
-	.error-icon {
-		color: $error-red;
-		margin-bottom: $spacing-normal;
-	}
 
 	.error-content h3 {
 		color: $error-dark-red;

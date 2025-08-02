@@ -70,5 +70,8 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
+# Set python path
+ENV PYTHONPATH=/app/
+
 # Default command for development (FastAPI)
 CMD ["python", "-m", "uvicorn", "fastapi_main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

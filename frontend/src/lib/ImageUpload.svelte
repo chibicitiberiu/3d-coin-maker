@@ -115,9 +115,10 @@
 	on:dragleave={handleDragLeave}
 >
 	<div class="control-grid">
-		<label>Upload Image</label>
+		<label for="file-upload-input">Upload Image</label>
 		<div class="upload-control">
 			<input
+				id="file-upload-input"
 				type="file"
 				bind:this={fileInput}
 				on:change={handleFileSelect}

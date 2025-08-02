@@ -94,9 +94,12 @@ $colors: (
   )
 );
 
+// Import map module for modern SCSS
+@use 'sass:map';
+
 // Color accessor function
 @function color($category, $variant) {
-  @return map-get(map-get($colors, $category), $variant);
+  @return map.get(map.get($colors, $category), $variant);
 }
 
 // Utility functions for common calculations

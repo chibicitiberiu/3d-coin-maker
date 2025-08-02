@@ -6,10 +6,10 @@ from typing import Any
 
 import manifold3d as m3d
 import trimesh
-from fastapi_settings import settings
 from PIL import Image
 
 from core.interfaces.stl_generator import ISTLGenerator
+from fastapi_settings import settings
 
 
 class HMMManifoldGenerator(ISTLGenerator):
