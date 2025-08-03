@@ -1,0 +1,29 @@
+# APScheduler mode override - use with: docker compose -f docker-compose.yml -f docker-compose.apscheduler.yml
+# This configuration disables Redis and Celery, using APScheduler instead
+
+services:
+  backend:
+    build:
+      args:
+        USE_CELERY: "false"
+    environment:
+      - USE_CELERY=false
+
+  # Override services to disable them by removing their configuration
+  redis:
+    deploy:
+      replicas: 0
+    profiles:
+      - disabled
+
+  celery:
+    deploy:
+      replicas: 0
+    profiles:
+      - disabled
+
+  celery-beat:
+    deploy:
+      replicas: 0
+    profiles:
+      - disabled

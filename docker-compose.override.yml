@@ -1,0 +1,45 @@
+# Development overrides - applied automatically when no specific compose file is specified
+# This file extends the base docker-compose.yml with development-specific settings
+
+services:
+  backend:
+    build:
+      args:
+        ENVIRONMENT: development
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        USE_CELERY: ${USE_CELERY:-true}
+    volumes:
+      - ./backend:/app
+      - ./temp:/app/temp
+    command: python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - PYTHONPATH=/app/
+
+  frontend:
+    build:
+      args:
+        ENVIRONMENT: development
+    ports:
+      - "${VITE_DEV_SERVER_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: pnpm run dev -- --host ${VITE_DEV_SERVER_HOST:-0.0.0.0} --port ${VITE_DEV_SERVER_PORT:-5173}
+
+  redis:
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --save 300 100
+
+  celery:
+    volumes:
+      - ./backend:/app
+      - ./temp:/app/temp
+    command: celery -A workers.celery_app worker --loglevel=debug
+
+  celery-beat:
+    volumes:
+      - ./backend:/app
+      - ./temp:/app/temp
+    command: celery -A workers.celery_app beat --loglevel=debug --schedule=/app/temp/celerybeat-schedule

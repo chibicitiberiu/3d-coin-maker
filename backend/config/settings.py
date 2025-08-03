@@ -41,13 +41,13 @@ class Settings(BaseSettings):
     )
 
     # File storage settings
-    temp_dir: str = Field(default="/tmp/coin_maker", description="Temporary file storage directory")
+    app_data_dir: str = Field(default="../data", description="Application data directory (contains settings, logs, generations, etc.)")
     max_file_size_mb: int = Field(default=50, description="Maximum upload file size in MB")
     file_cleanup_interval_minutes: int = Field(default=5, description="File cleanup interval in minutes")
     file_max_age_minutes: int = Field(default=30, description="Maximum age of temporary files in minutes")
 
     # Desktop mode detection settings
-    desktop_mode: bool = Field(default=False, description="Desktop mode flag (enables EEL GUI and APScheduler)")
+    desktop_mode: bool = Field(default=False, description="Desktop mode flag (enables PyWebView GUI and APScheduler)")
 
     # Rate limiting settings
     max_generations_per_hour: int = Field(default=20, description="Maximum generations per IP per hour")
@@ -74,9 +74,24 @@ class Settings(BaseSettings):
     hmm_timeout_seconds: int = Field(default=60, description="HMM operation timeout")
 
     @property
-    def temp_path(self) -> Path:
-        """Get temp directory as Path object."""
-        return Path(self.temp_dir)
+    def app_data_path(self) -> Path:
+        """Get application data directory as Path object."""
+        return Path(self.app_data_dir)
+    
+    @property
+    def generations_path(self) -> Path:
+        """Get generations subdirectory for file storage."""
+        return self.app_data_path / "generations"
+    
+    @property
+    def logs_path(self) -> Path:
+        """Get logs subdirectory."""
+        return self.app_data_path / "logs"
+    
+    @property
+    def settings_path(self) -> Path:
+        """Get settings subdirectory."""
+        return self.app_data_path / "settings"
 
     @property
     def max_file_size_bytes(self) -> int:

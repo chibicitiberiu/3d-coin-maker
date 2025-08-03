@@ -1,16 +1,18 @@
 # Installation Guide
 
-This guide covers manual installation of 3D Coin Maker without Docker. The application supports two different task processing modes that can be configured during installation.
+This guide covers installation of 3D Coin Maker for both development and production. The application includes a modern Just-based build system and supports multiple deployment modes.
 
 ## Prerequisites
 
 ### System Requirements
 - **Operating System**: Linux, macOS, or Windows
-- **Python**: 3.11 or higher
+- **Python**: 3.11-3.12 (3.13+ not yet supported by PyInstaller)
 - **Node.js**: 20 or higher  
+- **Just**: Task runner (https://just.systems)
+- **GLM**: Math library for HMM compilation
 - **Redis**: 6.0 or higher (only required for Celery mode)
 - **Memory**: 2GB+ RAM recommended
-- **Storage**: 1GB+ free space
+- **Storage**: 2GB+ free space (includes HMM compilation)
 
 ## Task Processing Modes
 
@@ -116,13 +118,127 @@ choco install python nodejs
 npm install -g pnpm
 ```
 
-## Installation Steps
+## Quick Start with Just
+
+The easiest way to get started is using the Just build system:
 
 ### 1. Clone Repository
 
 ```bash
 git clone https://github.com/yourusername/3d-coin-maker.git
 cd 3d-coin-maker
+```
+
+### 2. Install Just Task Runner
+
+```bash
+# Linux/macOS
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
+
+# Or via package manager:
+# Ubuntu/Debian: apt install just
+# macOS: brew install just
+# Fedora: dnf install just
+```
+
+### 3. Quick Setup and Run
+
+```bash
+# Check system dependencies
+just check-deps
+
+# Complete development setup (installs deps, builds HMM)
+just dev-setup
+
+# Run desktop application
+just run-desktop
+
+# OR run with Docker
+just run-docker
+```
+
+### 4. Available Commands
+
+Use `just --list` to see all available commands or `just help` for detailed help:
+
+```bash
+# Development
+just run-desktop [dev|prod]    # Run desktop app
+just run-docker [dev|prod]     # Run with Docker containers
+just dev-setup                 # Complete development setup
+
+# Building
+just build-frontend [mode]     # Build frontend (dev/prod/desktop)
+just build-desktop [mode]      # Build complete desktop app
+just build-appimage           # Create Linux AppImage package
+just build-flatpak            # Create Linux Flatpak package
+
+# Dependencies  
+just build-hmm                # Build HMM library dependency
+just install-deps             # Install all project dependencies
+
+# Utilities
+just clean                    # Clean all build artifacts
+just format                   # Format code
+just lint                     # Lint code
+just test                     # Run tests
+```
+
+## Manual Installation Steps
+
+If you prefer manual setup or need to customize the installation:
+
+### 1. System Dependencies
+
+Install the required system packages for your platform:
+
+#### Ubuntu/Debian
+```bash
+# Install base dependencies
+sudo apt update
+sudo apt install python3 python3-pip nodejs npm git build-essential cmake make pkg-config
+
+# Install GLM for HMM compilation
+sudo apt install libglm-dev
+
+# For Celery mode (optional)
+sudo apt install redis-server
+
+# Install Poetry and pnpm
+curl -sSL https://install.python-poetry.org | python3 -
+npm install -g pnpm
+```
+
+#### Fedora
+```bash
+# Install base dependencies
+sudo dnf install python3 python3-pip nodejs npm git gcc-c++ cmake make pkgconfig
+
+# Install GLM for HMM compilation
+sudo dnf install glm-devel
+
+# For Celery mode (optional)
+sudo dnf install redis
+
+# Install Poetry and pnpm
+curl -sSL https://install.python-poetry.org | python3 -
+npm install -g pnpm
+```
+
+#### macOS
+```bash
+# Install base dependencies
+brew install python@3 node git cmake make pkg-config
+
+# Install GLM for HMM compilation
+brew install glm
+
+# For Celery mode (optional)
+brew install redis
+
+# Install Poetry and pnpm
+curl -sSL https://install.python-poetry.org | python3 -
+npm install -g pnpm
 ```
 
 ### 2. Backend Setup
@@ -164,6 +280,27 @@ pnpm run build
 pnpm run dev
 ```
 
+### 4. HMM Dependency Setup
+
+The application requires the HMM (Height Map Mesher) library for 3D mesh generation:
+
+```bash
+# This is automated with Just: just build-hmm
+# Manual setup:
+
+# Clone HMM library
+mkdir -p build/external
+git clone https://github.com/fogleman/hmm.git build/external/hmm
+
+# Build HMM (requires GLM headers)
+cd build/external/hmm
+make
+cd ../../..
+
+# Create symlink for easy access
+ln -sf build/external/hmm/hmm build/hmm
+```
+
 ### 4. Redis Setup (Celery Mode Only)
 
 **Skip this section if using APScheduler mode.**
@@ -189,42 +326,67 @@ redis-cli ping
 
 ### 5. Start Services
 
+#### Using Just (Recommended)
+
+**Desktop Application (with GUI):**
+```bash
+# Development mode
+just run-desktop dev
+
+# Production mode  
+just run-desktop prod
+```
+
+**Web Application (Docker):**
+```bash
+# Development mode
+just run-docker dev
+
+# Production mode
+just run-docker prod
+
+# Stop containers
+just stop-docker dev
+```
+
+#### Manual Startup
+
 Choose the appropriate startup method based on your selected mode:
 
-#### Celery Mode Startup
+**Celery Mode Startup:**
 
-**Terminal 1: Redis**
+Terminal 1: Redis
 ```bash
 redis-server
 ```
 
-**Terminal 2: FastAPI Backend**
+Terminal 2: FastAPI Backend
 ```bash
 cd backend/
 poetry run python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**Terminal 3: Celery Worker**
+Terminal 3: Celery Worker
 ```bash
 cd backend/
 poetry run celery -A celery_app worker -l info
 ```
 
-**Terminal 4: Frontend (Development)**
+Terminal 4: Frontend (Development)
 ```bash
 cd frontend/
 pnpm run dev
 ```
 
-#### APScheduler Mode Startup
+**APScheduler Mode Startup:**
 
-**Terminal 1: FastAPI Backend (with integrated task processing)**
+Terminal 1: FastAPI Backend (with integrated task processing)
 ```bash
 cd backend/
 poetry run python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000
 ```
 
-**Terminal 2: Frontend (Development)**
+Terminal 2: Frontend (Development)
 ```bash
 cd frontend/
 pnpm run dev
@@ -288,6 +450,83 @@ PUBLIC_APP_VERSION=1.0.0
 
 # Development Settings
 VITE_DEV_MODE=1
+```
+
+## Desktop Application Packaging
+
+### Linux AppImage
+
+Create a portable Linux application:
+
+```bash
+# Build AppImage (requires Python 3.11-3.12)
+just build-appimage
+
+# The AppImage will be created in build/
+./build/CoinMaker-x86_64.AppImage
+```
+
+**Requirements for AppImage building:**
+- Python 3.11 or 3.12 (PyInstaller limitation)
+- All system dependencies installed
+- GLM development headers
+
+### Linux Flatpak
+
+Create a sandboxed Linux package for distribution via Flathub or direct installation:
+
+```bash
+# Build Flatpak package
+just build-flatpak
+
+# Install locally for testing
+just install-flatpak
+
+# Run the installed Flatpak
+flatpak run io.github.coinmaker.CoinMaker
+
+# Export as distributable bundle
+just export-flatpak
+
+# The Flatpak bundle will be created in build/
+# Users can install with: flatpak install CoinMaker-x86_64.flatpak
+```
+
+**Requirements for Flatpak building:**
+- flatpak-builder package installed
+- Flatpak runtime (automatically installed if missing)
+- All project dependencies (automatically handled by Flatpak)
+
+**Flatpak advantages:**
+- Sandboxed execution for security
+- Automatic dependency management
+- Cross-distribution compatibility
+- Integrated with Linux desktop environments
+- Easy distribution via Flathub
+
+**Installing flatpak-builder:**
+```bash
+# Fedora/RHEL
+sudo dnf install flatpak-builder
+
+# Ubuntu/Debian  
+sudo apt install flatpak-builder
+
+# Arch Linux
+sudo pacman -S flatpak-builder
+```
+
+### Development vs Production Builds
+
+```bash
+# Development build (with debug info)
+just build-desktop dev
+
+# Production build (optimized)
+just build-desktop prod
+
+# Desktop-specific build (optimized for desktop packaging)
+just build-frontend desktop
 ```
 
 ## Production Configuration
@@ -490,6 +729,47 @@ poetry run celery -A celery_app inspect ping
 ## Troubleshooting
 
 ### Common Issues
+
+**Just Not Found**
+```bash
+# Install Just task runner
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
+
+# Add to PATH if needed
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**HMM Build Failures**
+```bash
+# Check GLM headers
+just check-deps
+
+# Install GLM manually:
+# Ubuntu/Debian: sudo apt install libglm-dev
+# Fedora: sudo dnf install glm-devel
+# macOS: brew install glm
+
+# Force rebuild HMM
+just clean
+just build-hmm
+```
+
+**PyInstaller Python Version Issues**
+```bash
+# Check Python version
+python3 --version
+
+# PyInstaller requires Python 3.11-3.12
+# Use pyenv to manage Python versions:
+pyenv install 3.12.0
+pyenv local 3.12.0
+
+# Recreate Poetry environment
+poetry env remove python
+poetry env use python3.12
+poetry install
+```
 
 **Python Version Issues**
 ```bash

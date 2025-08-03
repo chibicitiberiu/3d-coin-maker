@@ -30,8 +30,8 @@ A staged development plan for building a self-hostable web application that gene
 - [COMPLETED] **Parameter mapping and consistency** between frontend and backend
 - [COMPLETED] **Environment configuration** for API base URLs
 
-### 🚧 In Progress/Partial
-- 🚧 Error handling and user feedback (90% - could use more sophisticated error messaging)
+### In Progress/Partial
+- Error handling and user feedback (90% - could use more sophisticated error messaging)
 
 ### [NOT STARTED] Missing Features
 - [NOT STARTED] Comprehensive testing (unit, integration, e2e tests)

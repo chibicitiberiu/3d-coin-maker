@@ -1,4 +1,5 @@
-import { browser } from '$app/environment';
+// Simple browser check without SvelteKit environment dependency
+const browser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 // Photon WASM types
 export interface PhotonImage {

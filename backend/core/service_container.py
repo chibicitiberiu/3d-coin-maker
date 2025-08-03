@@ -32,7 +32,7 @@ class ServiceContainer:
         """Get file storage service."""
         if 'file_storage' not in self._services:
             self._services['file_storage'] = FileSystemStorage(
-                temp_dir=self.settings.temp_dir
+                generations_dir=self.settings.app_data_dir
             )
         return self._services['file_storage']
 
@@ -78,7 +78,7 @@ class ServiceContainer:
         if 'path_resolver' not in self._services:
             self._services['path_resolver'] = PathResolver(
                 desktop_mode=self.settings.is_desktop_mode(),
-                temp_dir_setting=self.settings.temp_dir
+                app_data_dir_setting=self.settings.app_data_dir
             )
         return self._services['path_resolver']
 

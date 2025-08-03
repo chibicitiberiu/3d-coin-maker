@@ -1,0 +1,95 @@
+app-id: io.github.coinmaker.CoinMaker
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: coin-maker
+
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --share=network
+  - --filesystem=home:rw
+  - --filesystem=/tmp:rw
+
+modules:
+  - name: python3-poetry
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation poetry
+    sources: []
+
+  - name: nodejs
+    buildsystem: simple
+    build-commands:
+      - mkdir -p ${FLATPAK_DEST}/bin ${FLATPAK_DEST}/lib
+      - cp -a . ${FLATPAK_DEST}/lib/nodejs
+      - ln -s ../lib/nodejs/bin/node ${FLATPAK_DEST}/bin/node
+      - ln -s ../lib/nodejs/bin/npm ${FLATPAK_DEST}/bin/npm
+      - ln -s ../lib/nodejs/bin/npx ${FLATPAK_DEST}/bin/npx
+    sources:
+      - type: archive
+        url: https://nodejs.org/dist/v20.18.0/node-v20.18.0-linux-x64.tar.xz
+        sha256: 73bf1b76d8e9d8b5fef1ba7a3a7c3a7c2ff77bd9e2e3fa8777ba0e7b77f9b7a3
+
+  - name: pnpm
+    buildsystem: simple
+    build-commands:
+      - npm install -g pnpm
+    sources: []
+
+  - name: hmm-library
+    buildsystem: simple
+    build-commands:
+      - cd build/external/hmm && make
+      - install -Dm755 build/external/hmm/hmm ${FLATPAK_DEST}/bin/hmm
+    sources:
+      - type: git
+        url: .
+        branch: HEAD
+
+  - name: frontend
+    buildsystem: simple
+    build-commands:
+      - cd frontend
+      - pnpm install --frozen-lockfile
+      - pnpm run build:desktop
+      - mkdir -p ${FLATPAK_DEST}/share/coin-maker/frontend
+      - cp -r ../build/frontend/* ${FLATPAK_DEST}/share/coin-maker/frontend/
+    sources:
+      - type: git
+        url: .
+        branch: HEAD
+
+  - name: coin-maker
+    buildsystem: simple
+    build-commands:
+      - cd backend
+      - poetry install --only=main
+      - mkdir -p ${FLATPAK_DEST}/bin
+      - |
+        cat > ${FLATPAK_DEST}/bin/coin-maker << 'EOF'
+        #!/bin/bash
+        cd /app/share/coin-maker/backend
+        export PYTHONPATH="/app/share/coin-maker/backend:$PYTHONPATH"
+        export FRONTEND_BUILD_DIR="/app/share/coin-maker/frontend"
+        exec poetry run python desktop_main.py "$@"
+        EOF
+      - chmod +x ${FLATPAK_DEST}/bin/coin-maker
+      - mkdir -p ${FLATPAK_DEST}/share/coin-maker/backend
+      - cp -r . ${FLATPAK_DEST}/share/coin-maker/backend/
+      - mkdir -p ${FLATPAK_DEST}/share/applications
+      - mkdir -p ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps
+      - install -Dm644 ../io.github.coinmaker.CoinMaker.desktop ${FLATPAK_DEST}/share/applications/
+      - if [ -f ../frontend/static/favicon.svg ]; then install -Dm644 ../frontend/static/favicon.svg ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/io.github.coinmaker.CoinMaker.svg; fi
+      - mkdir -p ${FLATPAK_DEST}/share/metainfo
+      - install -Dm644 ../io.github.coinmaker.CoinMaker.metainfo.xml ${FLATPAK_DEST}/share/metainfo/
+    sources:
+      - type: git
+        url: .
+        branch: HEAD
+      - type: file
+        path: io.github.coinmaker.CoinMaker.desktop
+      - type: file
+        path: io.github.coinmaker.CoinMaker.metainfo.xml

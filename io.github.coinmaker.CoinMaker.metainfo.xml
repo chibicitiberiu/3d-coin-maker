@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.coinmaker.CoinMaker</id>
+  
+  <name>Coin Maker</name>
+  <summary>Generate 3D printable coins from images</summary>
+  
+  <description>
+    <p>
+      Coin Maker is a powerful application that transforms your images into 3D printable coin STL files.
+      Simply upload an image, adjust the coin parameters, and generate a high-quality STL file ready for 3D printing.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Convert images to 3D heightmaps</li>
+      <li>Adjustable coin dimensions and depth</li>
+      <li>Real-time 3D preview</li>
+      <li>High-quality STL generation</li>
+      <li>Support for various image formats</li>
+    </ul>
+  </description>
+  
+  <launchable type="desktop-id">io.github.coinmaker.CoinMaker.desktop</launchable>
+  
+  <url type="homepage">https://github.com/coinmaker/coin-maker</url>
+  <url type="bugtracker">https://github.com/coinmaker/coin-maker/issues</url>
+  
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  
+  <provides>
+    <binary>coin-maker</binary>
+  </provides>
+  
+  <categories>
+    <category>Graphics</category>
+    <category>Engineering</category>
+  </categories>
+  
+  <keywords>
+    <keyword>3D</keyword>
+    <keyword>printing</keyword>
+    <keyword>coin</keyword>
+    <keyword>STL</keyword>
+    <keyword>modeling</keyword>
+    <keyword>generator</keyword>
+  </keywords>
+  
+  <releases>
+    <release version="0.0.1" date="2024-01-01">
+      <description>
+        <p>Initial release</p>
+      </description>
+    </release>
+  </releases>
+  
+  <content_rating type="oars-1.1" />
+</component>

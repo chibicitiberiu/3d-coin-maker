@@ -75,7 +75,7 @@ class BaseApp(ABC):
         """Run the application.
 
         Each app type should implement this to start their specific
-        runtime (FastAPI server, Eel desktop app, etc.).
+        runtime (FastAPI server, PyWebView desktop app, etc.).
         """
         pass
 

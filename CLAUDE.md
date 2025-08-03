@@ -6,6 +6,8 @@
 
 **Current Status**: Stage 1 MVP - 100% complete, fully functional with frontend-backend integration + FastAPI migration complete
 
+**Testing**: Comprehensive smoke test system available via `just smoke-test-install` and `just smoke-test chrome` for automated end-to-end testing of all deployment modes.
+
 ## Memories
 
 - do not put emojis in code or documentation

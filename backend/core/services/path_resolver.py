@@ -13,15 +13,15 @@ from pathlib import Path
 class PathResolver:
     """Service for resolving paths in web vs desktop contexts."""
 
-    def __init__(self, desktop_mode: bool = False, temp_dir_setting: str | None = None):
+    def __init__(self, desktop_mode: bool = False, app_data_dir_setting: str | None = None):
         """Initialize path resolver with explicit mode configuration.
 
         Args:
             desktop_mode: Whether running in desktop mode
-            temp_dir_setting: Temporary directory path (for web mode)
+            app_data_dir_setting: Application data directory path
         """
         self._desktop_mode = desktop_mode
-        self._temp_dir_setting = temp_dir_setting
+        self._app_data_dir_setting = app_data_dir_setting
         self._app_root = self._detect_app_root()
 
     def _detect_app_root(self) -> Path:
@@ -55,29 +55,59 @@ class PathResolver:
         """Get the application root directory."""
         return self._app_root
 
-    def get_temp_dir(self, temp_dir_setting: str | None = None) -> Path:
-        """Get the temporary files directory."""
-        if self._desktop_mode:
-            # Desktop mode - use local temp directory
-            temp_path = self._app_root / "temp"
-        else:
-            # Web mode - use configured temp directory
-            configured_temp = temp_dir_setting or self._temp_dir_setting or "/tmp/coin_maker"
-            temp_path = Path(configured_temp)
-
+    def get_app_data_dir(self, app_data_dir_setting: str | None = None) -> Path:
+        """Get the application data directory."""
+        from config.settings import Settings
+        settings = Settings()
+        
+        configured_dir = app_data_dir_setting or self._app_data_dir_setting or settings.app_data_dir
+        app_data_path = Path(configured_dir)
+        
+        # If it's a relative path, resolve it relative to the backend directory
+        if not app_data_path.is_absolute():
+            app_data_path = self._app_root / app_data_path
+        
         # Ensure directory exists
-        temp_path.mkdir(parents=True, exist_ok=True)
-        return temp_path
+        app_data_path.mkdir(parents=True, exist_ok=True)
+        return app_data_path
+    
+    def get_generations_dir(self, app_data_dir_setting: str | None = None) -> Path:
+        """Get the generations directory for file storage."""
+        generations_path = self.get_app_data_dir(app_data_dir_setting) / "generations"
+        
+        # Ensure directory exists
+        generations_path.mkdir(parents=True, exist_ok=True)
+        return generations_path
+    
+    def get_logs_dir(self, app_data_dir_setting: str | None = None) -> Path:
+        """Get the logs directory."""
+        logs_path = self.get_app_data_dir(app_data_dir_setting) / "logs"
+        
+        # Ensure directory exists
+        logs_path.mkdir(parents=True, exist_ok=True)
+        return logs_path
+    
+    def get_settings_dir(self, app_data_dir_setting: str | None = None) -> Path:
+        """Get the settings directory."""
+        settings_path = self.get_app_data_dir(app_data_dir_setting) / "settings"
+        
+        # Ensure directory exists
+        settings_path.mkdir(parents=True, exist_ok=True)
+        return settings_path
+
+    def get_frontend_dir(self) -> Path:
+        """Get the frontend source directory path."""
+        return self._app_root / "frontend"
 
     def get_frontend_build_dir(self) -> Path:
         """Get the frontend build directory path."""
         if self._desktop_mode:
-            # Desktop mode - frontend build is relative to app root
-            build_path = self._app_root / "frontend" / "build"
+            # Desktop mode - frontend build is in build directory
+            build_path = self._app_root / "build" / "frontend"
         else:
             # Web mode - build is typically served by separate container
             # This path may not exist in web mode as frontend is served separately
-            build_path = self._app_root / "frontend" / "build"
+            build_path = self._app_root / "build" / "frontend"
 
         return build_path
 
@@ -96,8 +126,8 @@ class PathResolver:
 
     def resolve_file_path(self, generation_id: str, file_type: str) -> Path:
         """Resolve file path for a specific generation and file type."""
-        temp_dir = self.get_temp_dir()
-        generation_dir = temp_dir / generation_id
+        generations_dir = self.get_generations_dir()
+        generation_dir = generations_dir / generation_id
 
         # File type to filename mapping
         file_extensions = {
@@ -112,22 +142,13 @@ class PathResolver:
 
     def ensure_generation_dir(self, generation_id: str) -> Path:
         """Ensure generation directory exists and return its path."""
-        generation_dir = self.get_temp_dir() / generation_id
+        generation_dir = self.get_generations_dir() / generation_id
         generation_dir.mkdir(parents=True, exist_ok=True)
         return generation_dir
 
     def get_log_dir(self) -> Path:
-        """Get the logs directory."""
-        if self._desktop_mode:
-            # Desktop mode - logs in app directory or user data
-            log_dir = self._app_root / "logs"
-        else:
-            # Web mode - standard log location
-            log_dir = Path("/var/log/coin_maker")
-
-        # Ensure directory exists
-        log_dir.mkdir(parents=True, exist_ok=True)
-        return log_dir
+        """Get the logs directory (legacy method, use get_logs_dir instead)."""
+        return self.get_logs_dir()
 
     def get_config_dir(self) -> Path:
         """Get the configuration directory."""
@@ -148,9 +169,9 @@ path_resolver = PathResolver()
 
 # Helper functions for backward compatibility with configuration system
 # These provide a bridge between old procedural code and new service architecture
-def get_temp_dir() -> Path:
-    """Get temporary directory path."""
-    return path_resolver.get_temp_dir()
+def get_generations_dir() -> Path:
+    """Get generations directory path."""
+    return path_resolver.get_generations_dir()
 
 
 def get_frontend_build_dir() -> Path:

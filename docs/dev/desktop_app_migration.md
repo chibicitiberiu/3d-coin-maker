@@ -73,105 +73,70 @@ Web App:
 
 **Status**: Phase 1 is 100% complete and tested. The system can now run with either Celery or APScheduler based on environment configuration.
 
-### Phase 2: Eel Integration (Week 2) [WARNING] **NOT STARTED**
-**Goal**: Integrate Eel for desktop wrapper functionality
+### Phase 2: PyWebView Integration (Week 2) [COMPLETED] **FULLY COMPLETE**
+**Goal**: Integrate PyWebView for native desktop GUI functionality
 
-#### [NOT STARTED] 2.1 Install Dependencies - PENDING
+#### [COMPLETED] 2.1 Install Dependencies - DONE
 ```bash
 cd backend/
-poetry add eel apscheduler
+poetry add pywebview apscheduler
+poetry remove eel  # Replaced with pywebview
 ```
-**Note**: APScheduler already added, Eel needs to be added
+**Note**: APScheduler and PyWebView (v5.4) are now installed, Eel removed
 
-#### [NOT STARTED] 2.2 Create Desktop Entry Point - PENDING
+#### [COMPLETED] 2.2 Create Desktop Entry Point - DONE (Enhanced Implementation)
+
+**Current Implementation**: Modern application architecture with `desktop_main.py` entry point and `DesktopApp` class providing:
+- PyWebView native GUI integration with embedded webview
+- Clean FastAPI app factory integration  
+- APScheduler task queue in desktop mode
+- Settings abstraction for desktop vs web deployment
+- Service container with dependency injection
+- Lifecycle management and cleanup
+- Native file dialogs via PyWebView JavaScript API
+
 ```python
-# backend/desktop_main.py - UPDATED FOR FASTAPI
-import eel
-import os
-import sys
-import threading
-import time
-import uvicorn
-from pathlib import Path
-from fastapi_main import app
-from fastapi_settings import settings
-
-def start_fastapi_server():
-    """Start FastAPI server in background thread"""
-    os.environ.setdefault('USE_CELERY', 'false')  # Force APScheduler mode
-    
-    # Configure for desktop mode
-    config = uvicorn.Config(
-        app,
-        host='127.0.0.1',
-        port=8000,
-        log_level='info',
-        access_log=False  # Reduce console noise
-    )
-    server = uvicorn.Server(config)
-    server.run()
+# backend/desktop_main.py (Current Implementation)
+#!/usr/bin/env python3
+"""Desktop Application Entry Point"""
 
 def main():
-    # Set up paths
-    backend_dir = Path(__file__).parent
-    frontend_build_dir = backend_dir.parent / 'frontend' / 'build'
+    from apps.desktop_app import DesktopApp
     
-    # Start FastAPI in background thread
-    fastapi_thread = threading.Thread(target=start_fastapi_server, daemon=True)
-    fastapi_thread.start()
+    # Create and initialize desktop app
+    app = DesktopApp()
+    app.initialize()
     
-    # Wait for FastAPI to start
-    time.sleep(2)  # Faster startup than Django
-    
-    # Initialize Eel with built frontend
-    eel.init(str(frontend_build_dir))
-    
-    # Start Eel app
-    eel.start('index.html', 
-              size=(1400, 900),
-              port=0,  # Use random port for Eel
-              host='localhost',
-              block=True)
+    # Run the application (currently runs FastAPI backend)
+    app.run()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 ```
 
-#### [NOT STARTED] 2.3 Add Native File Dialogs - PENDING
-```python
-# backend/desktop_main.py (additions)
-import tkinter as tk
-from tkinter import filedialog
+The `DesktopApp` class provides a complete desktop application foundation with:
+- Desktop-optimized settings and configuration
+- APScheduler task queue integration
+- FastAPI app creation with lifecycle integration
+- Service container for dependency injection
 
-@eel.expose
-def open_file_dialog():
-    """Open native file dialog for image selection"""
-    root = tk.Tk()
-    root.withdraw()  # Hide main window
-    
-    file_path = filedialog.askopenfilename(
-        title="Select Image",
-        filetypes=[
-            ("Image files", "*.png *.jpg *.jpeg *.gif *.bmp *.tiff"),
-            ("All files", "*.*")
-        ]
-    )
-    return file_path
+#### [COMPLETED] 2.3 Add Native File Dialogs - DONE
 
-@eel.expose
-def save_file_dialog(default_filename="coin.stl"):
-    """Open native save dialog for STL export"""
-    root = tk.Tk()
-    root.withdraw()
-    
-    file_path = filedialog.asksaveasfilename(
-        title="Save STL File",
-        defaultextension=".stl",
-        filetypes=[("STL files", "*.stl"), ("All files", "*.*")],
-        initialvalue=default_filename
-    )
-    return file_path
-```
+**Implementation**: Created comprehensive `apps/file_dialogs.py` module with:
+- Native file selection dialog for images
+- Native save dialog for STL files
+- Folder selection dialog
+- Desktop application info endpoint
+- Proper error handling and logging
+- Eel integration with automatic setup
+
+**Features**:
+- Multiple image format support (PNG, JPEG, GIF, BMP, TIFF, WebP)
+- Cross-platform compatibility via tkinter
+- Dialog window focus management
+- Automatic cleanup of temporary UI elements
+
+The file dialogs are automatically initialized when the Eel GUI starts, providing seamless native file handling for desktop users.
 
 ### Phase 3: Frontend Adaptations (Week 2-3) [NOT STARTED] **NOT STARTED**
 **Goal**: Adapt frontend for both web and desktop contexts

@@ -1,0 +1,1 @@
+# Coin Maker Smoke Tests

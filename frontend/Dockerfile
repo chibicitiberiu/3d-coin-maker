@@ -1,4 +1,33 @@
-# Multi-stage build for production frontend
+# Unified Dockerfile for frontend with environment-specific configurations
+# Build args control dev vs prod behavior
+
+ARG ENVIRONMENT=development
+
+# Development stage
+FROM node:20-alpine AS development
+
+# Set working directory
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@9.15.0
+
+# Copy package files
+COPY package*.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Expose port (will be set by environment variable)
+EXPOSE 5173
+
+# Start development server
+CMD ["pnpm", "run", "dev"]
+
+# Production builder stage
 FROM node:20-alpine AS builder
 
 # Install dumb-init for proper signal handling
@@ -8,7 +37,7 @@ RUN apk add --no-cache dumb-init
 WORKDIR /app
 
 # Install pnpm globally with specific version for reproducibility
-RUN npm install -g pnpm@8.15.0
+RUN npm install -g pnpm@9.15.0
 
 # Copy package files first for better layer caching
 COPY package.json pnpm-lock.yaml ./
@@ -22,8 +51,8 @@ COPY . .
 # Build the application with production optimizations
 RUN pnpm run build
 
-# Production stage with nginx
-FROM nginx:1.25-alpine
+# Production runtime stage
+FROM nginx:1.25-alpine AS production
 
 # Install dumb-init and security updates
 RUN apk add --no-cache dumb-init \
@@ -46,10 +75,6 @@ RUN rm -f /etc/nginx/conf.d/default.conf.bak
 RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run \
     && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /var/run /etc/nginx
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
-
 # Switch to non-root user
 USER nginx
 
@@ -61,3 +86,6 @@ ENTRYPOINT ["dumb-init", "--"]
 
 # Start nginx with optimized settings
 CMD ["nginx", "-g", "daemon off; error_log /var/log/nginx/error.log warn;"]
+
+# Final stage selection based on environment
+FROM ${ENVIRONMENT} AS final

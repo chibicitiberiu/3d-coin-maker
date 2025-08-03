@@ -1,6 +1,7 @@
 import logging
 import uuid
 from collections.abc import Callable
+from dataclasses import asdict
 from pathlib import Path
 from uuid import UUID
 
@@ -110,8 +111,8 @@ class CoinGenerationService:
             processed_filename = "processed.png"
             heightmap_filename = "heightmap.png"
 
-            processed_path = self.file_storage.temp_dir / generation_id / processed_filename
-            heightmap_path = self.file_storage.temp_dir / generation_id / heightmap_filename
+            processed_path = self.file_storage.generations_dir / generation_id / processed_filename
+            heightmap_path = self.file_storage.generations_dir / generation_id / heightmap_filename
 
             processed_image.save(processed_path)
             heightmap.save(heightmap_path)
@@ -151,7 +152,7 @@ class CoinGenerationService:
 
             # Generate STL
             stl_filename = "coin.stl"
-            stl_path = self.file_storage.temp_dir / generation_id / stl_filename
+            stl_path = self.file_storage.generations_dir / generation_id / stl_filename
 
             self.stl_generator.generate_stl(heightmap_path, coin_parameters, stl_path, progress_callback)
 
@@ -164,7 +165,7 @@ class CoinGenerationService:
         """Get path to a generated file."""
         if file_type == 'original':
             # For original files, we need to find the actual filename
-            generation_dir = self.file_storage.temp_dir / generation_id
+            generation_dir = self.file_storage.generations_dir / generation_id
             if generation_dir.exists():
                 for file_path in generation_dir.iterdir():
                     if file_path.name.startswith('original_'):
@@ -191,7 +192,7 @@ class CoinGenerationService:
         """Start background image processing task."""
         task_id = self.task_queue.enqueue(
             task_name='process_image_task',
-            args=(generation_id, parameters.model_dump()),
+            args=(generation_id, asdict(parameters)),
             max_retries=3,
             retry_delay=60
         )
@@ -202,7 +203,7 @@ class CoinGenerationService:
         """Start background STL generation task."""
         task_id = self.task_queue.enqueue(
             task_name='generate_stl_task',
-            args=(generation_id, coin_parameters.model_dump()),
+            args=(generation_id, asdict(coin_parameters)),
             max_retries=3,
             retry_delay=60
         )

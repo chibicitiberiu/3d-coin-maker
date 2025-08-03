@@ -1,0 +1,2 @@
+# This file ensures the generations directory is preserved in git
+# Generated coin files will be placed here during runtime

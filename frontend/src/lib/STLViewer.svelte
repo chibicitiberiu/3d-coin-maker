@@ -392,7 +392,7 @@
 			on:click={toggleAutoRotate} 
 			title="Auto Rotate"
 		>
-			🔄
+			Auto
 		</button>
 	</div>
 </div>

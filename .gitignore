@@ -1,6 +1,13 @@
 # Temporary storage
 temp/
 
+# Logs
+logs/
+
+# Generated data (preserve directory structure)
+data/generations/*
+!data/generations/.gitkeep
+
 # Python
 __pycache__/
 *.py[cod]
@@ -53,7 +60,6 @@ yarn.lock
 
 # SvelteKit
 .svelte-kit/
-build/
 .vercel/
 .netlify/
 .wrangler/
@@ -90,3 +96,6 @@ Thumbs.db
 .coverage
 .pytest_cache/
 .tox/
+
+# Build directory (contains all build artifacts)
+build/

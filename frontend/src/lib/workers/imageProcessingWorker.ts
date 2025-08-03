@@ -1,9 +1,8 @@
 // Image Processing Web Worker
 // This worker handles heavy image processing tasks in the background
 
-import { loadPhoton, type PhotonModule } from '../imageProcessor';
-
-let photonModule: PhotonModule | null = null;
+// Import Photon directly in worker context
+let photonModule: any = null;
 
 // Message types
 interface ProcessImageMessage {
@@ -37,14 +36,34 @@ interface ResultMessage {
 
 type WorkerMessage = ProcessImageMessage;
 
-// Initialize Photon WASM
+// Initialize Photon WASM directly in worker context
 async function initializePhoton() {
 	if (!photonModule) {
 		try {
-			photonModule = await loadPhoton();
-			console.log('Worker: Photon WASM initialized successfully');
+			console.log('Worker: Starting Photon WASM initialization...');
+			
+			// Try to load Photon WASM with explicit error handling
+			const photon = await import('@silvia-odwyer/photon');
+			console.log('Worker: Photon module loaded successfully:', typeof photon, Object.keys(photon));
+			
+			// Initialize WASM binary if needed
+			if (typeof photon.default === 'function') {
+				console.log('Worker: Calling photon.default() to initialize WASM...');
+				await photon.default();
+				console.log('Worker: WASM initialization completed');
+			} else {
+				console.log('Worker: No default function found, Photon may already be initialized');
+			}
+			
+			photonModule = photon as any;
+			console.log('Worker: Photon WASM initialized successfully, functions available:', Object.keys(photon).slice(0, 10));
 		} catch (error) {
 			console.error('Worker: Failed to initialize Photon WASM:', error);
+			console.error('Worker: Error details:', {
+				name: error.name,
+				message: error.message,
+				stack: error.stack
+			});
 			throw error;
 		}
 	}

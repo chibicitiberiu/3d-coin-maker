@@ -3,8 +3,9 @@
 **Generate 3D printable coin STL files from images with customizable relief depth, size, and thickness parameters.**
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11-3.12](https://img.shields.io/badge/python-3.11--3.12-blue.svg)](https://www.python.org/downloads/)
 [![Node.js 20+](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
+[![Just](https://img.shields.io/badge/task%20runner-Just-orange.svg)](https://just.systems)
 
 ## Overview
 
@@ -61,10 +62,11 @@
 
 ### Prerequisites
 
-- **Docker & Docker Compose** (recommended)
-- **OR** Python 3.11+ and Node.js 20+ (for local development)
+- **Just task runner** (https://just.systems)
+- **Docker & Docker Compose** (recommended for web deployment)
+- **OR** Python 3.11-3.12, Node.js 20+, and GLM library (for desktop/development)
 
-### Quick Start (Docker)
+### Quick Start with Just
 
 1. **Clone the repository**
    ```bash
@@ -72,26 +74,74 @@
    cd 3d-coin-maker
    ```
 
-2. **Configure environment**
+2. **Install Just task runner**
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
+   ```
+
+3. **Check dependencies and setup**
+   ```bash
+   just check-deps    # Verify system dependencies
+   just dev-setup     # Complete development setup
+   ```
+
+4. **Run the application**
+   ```bash
+   # Desktop app with GUI
+   just run-desktop
+   
+   # OR web app with Docker
+   just run-docker
+   ```
+
+### Available Commands
+
+```bash
+just --list           # Show all available commands
+just help            # Detailed help
+just version         # Show version information
+
+# Development
+just run-desktop [dev|prod]    # Run desktop app
+just run-docker [dev|prod]     # Run web app in Docker
+just dev-setup                 # Complete development setup
+
+# Building
+just build-desktop [mode]      # Build desktop application
+just build-appimage           # Create Linux AppImage package
+just build-frontend [mode]     # Build frontend (dev/prod/desktop)
+
+# Utilities
+just clean                    # Clean build artifacts
+just format                   # Format code
+just lint                     # Lint code
+just test                     # Run tests
+```
+
+### Legacy Docker Setup
+
+For traditional Docker deployment without Just:
+
+1. **Configure environment**
    ```bash
    cp config/backend.env.example config/backend.env
    cp config/frontend.env.example config/frontend.env
    # Edit configuration files as needed
    ```
 
-3. **Start the application**
+2. **Start the application**
    ```bash
    docker compose up -d
    ```
 
-4. **Access the application**
+3. **Access the application**
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:8000
    - Health Check: http://localhost:8000/api/health/
 
 ### Manual Installation
 
-See [docs/installation.md](docs/installation.md) for detailed manual setup instructions.
+See [docs/installation.md](docs/installation.md) for detailed manual setup instructions including system dependencies and troubleshooting.
 
 ## Development Setup
 

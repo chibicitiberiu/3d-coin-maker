@@ -6,6 +6,9 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"build:dev": "vite build --mode development",
+		"build:prod": "vite build --mode production",
+		"build:desktop": "vite build --mode desktop",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

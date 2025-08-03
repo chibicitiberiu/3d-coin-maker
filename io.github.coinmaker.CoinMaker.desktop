@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Coin Maker
+GenericName=3D Coin Generator
+Comment=Generate 3D printable coins from images
+Exec=coin-maker
+Icon=io.github.coinmaker.CoinMaker
+Terminal=false
+Categories=Graphics;Engineering;
+Keywords=3d;printing;coin;stl;modeling;generator;
+StartupNotify=true
+MimeType=image/png;image/jpeg;image/gif;image/bmp;image/tiff;

@@ -15,8 +15,8 @@ class IFileStorage(ABC):
 
     @property
     @abstractmethod
-    def temp_dir(self) -> Path:
-        """Get the temporary directory path."""
+    def generations_dir(self) -> Path:
+        """Get the generations directory path."""
         pass
 
     @abstractmethod

@@ -1,8 +1,10 @@
 // Image Processing Worker Service
 // Manages Web Worker for non-blocking image processing
 
-import { browser } from '$app/environment';
 import type { ImageProcessingParams } from '../stores/imageProcessingState';
+
+// Simple browser check without SvelteKit environment dependency
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 export interface ProcessingProgress {
 	step: string;
@@ -33,7 +35,7 @@ class ImageProcessingWorkerService {
 
 	private initializeWorker() {
 		// Only initialize worker in browser environment
-		if (!browser) {
+		if (!isBrowser) {
 			console.log('ImageProcessingWorkerService: Skipping worker initialization on server');
 			return;
 		}
@@ -115,8 +117,12 @@ class ImageProcessingWorkerService {
 		params: ImageProcessingParams,
 		onProgress?: (progress: ProcessingProgress) => void
 	): Promise<ProcessingResult> {
-		if (!browser || !this.worker) {
-			return { success: false, error: 'Worker not available or not in browser' };
+		if (!isBrowser) {
+			return { success: false, error: 'Not in browser environment' };
+		}
+		
+		if (!this.worker) {
+			return { success: false, error: 'Worker not available - falling back to main thread processing would be needed' };
 		}
 
 		const requestId = this.generateRequestId();

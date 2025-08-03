@@ -7,7 +7,7 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.14"
 Pillow = "^10.1.0"
 celery = "^5.3.4"
 redis = "^5.0.1"
@@ -20,6 +20,9 @@ fastapi = "^0.116.1"
 uvicorn = "^0.35.0"
 python-multipart = "^0.0.20"
 pydantic-settings = "^2.5.2"
+pywebview = {version = "^5.4", extras = ["qt"]}
+PyQt6 = {version = "^6.7.0", markers = "sys_platform == 'linux'"}
+PyQt6-WebEngine = {version = "^6.7.0", markers = "sys_platform == 'linux'"}
 
 [tool.poetry.group.dev.dependencies]
 gunicorn = "^21.2.0"
@@ -36,6 +39,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+cache-dir = "../build/.ruff_cache"
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -60,3 +64,8 @@ reportMissingImports = true
 reportMissingTypeStubs = false
 pythonVersion = "3.11"
 pythonPlatform = "Linux"
+
+[tool.pytest.ini_options]
+cache_dir = "../build/.pytest_cache"
+addopts = "-v --tb=short"
+testpaths = ["tests"]

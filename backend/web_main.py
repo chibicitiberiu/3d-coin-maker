@@ -21,10 +21,8 @@ def setup_python_path() -> None:
         sys.path.insert(0, str(backend_dir))
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+from core.logging_config import setup_web_logging
+setup_web_logging(debug=False)
 
 logger = logging.getLogger(__name__)
 

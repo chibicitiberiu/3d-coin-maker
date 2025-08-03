@@ -64,7 +64,7 @@
 
 	<footer>
 		<small>
-			Built with ❤️ using modern web technologies. 
+			Built with care using modern web technologies. 
 			<a href="/" class="secondary">← Back to Generator</a>
 		</small>
 	</footer>
