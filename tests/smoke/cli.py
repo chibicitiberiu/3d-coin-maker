@@ -13,8 +13,14 @@ from config_detector import ConfigDetector
 from test_runner import SmokeTestRunner
 
 
-def create_driver(browser_type="chrome", headless=False):
-    """Create WebDriver instance."""
+def create_driver(browser_type="chrome", headless=False, debug_port=None):
+    """Create WebDriver instance.
+    
+    Args:
+        browser_type: Type of browser ('chrome' or 'firefox')
+        headless: Whether to run in headless mode
+        debug_port: Port for connecting to existing Chrome instance (desktop mode)
+    """
     # Find project root and WebDriver directory
     project_root = find_project_root()
     webdriver_dir = os.path.join(project_root, "build", "test-drivers")
@@ -37,22 +43,56 @@ def create_driver(browser_type="chrome", headless=False):
                 return webdriver.Firefox(options=options)
         except Exception as e:
             print(f"WARNING: Firefox not available ({e}), falling back to Chrome")
-            return create_chrome_driver(headless, webdriver_dir)
+            return create_chrome_driver(headless, webdriver_dir, debug_port)
     else:
-        return create_chrome_driver(headless, webdriver_dir)
+        return create_chrome_driver(headless, webdriver_dir, debug_port)
 
 
-def create_chrome_driver(headless, webdriver_dir=None):
-    """Create Chrome WebDriver."""
+def create_chrome_driver(headless, webdriver_dir=None, debug_port=None):
+    """Create Chrome WebDriver.
+    
+    Args:
+        headless: Whether to run in headless mode
+        webdriver_dir: Directory containing ChromeDriver
+        debug_port: Port for connecting to existing Chrome instance (desktop mode)
+    """
     options = ChromeOptions()
-    if headless:
-        options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--allow-running-insecure-content")
+    
+    if debug_port:
+        # Connect to existing Chrome instance (desktop mode)
+        options.add_experimental_option("debuggerAddress", f"127.0.0.1:{debug_port}")
+        print(f"Connecting to existing Chrome instance on port {debug_port}")
+        
+        # Add options that work better with PyWebView/QtWebEngine
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check") 
+        options.add_argument("--disable-default-apps")
+        options.add_argument("--remote-allow-origins=*")
+        
+        # Basic options for QtWebEngine compatibility
+        options.add_argument("--disable-web-security")
+        options.add_argument("--allow-running-insecure-content")
+        
+        # For desktop mode, don't set binary location - we're connecting to existing instance
+        # The QtWebEngine debug port should handle version detection
+        
+        # Additional options to help with QtWebEngine connection
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-plugins")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-renderer-backgrounding")
+    else:
+        # Normal Chrome options for new instance
+        if headless:
+            options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--allow-running-insecure-content")
     
     # Try to use local ChromeDriver first
     if webdriver_dir:
@@ -152,24 +192,32 @@ def main():
             return 1
         configs = filtered_configs
     
-    # Create driver
-    try:
-        driver = create_driver(args.browser, args.headless)
-        driver.implicitly_wait(10)
-    except Exception as e:
-        print(f"ERROR: Failed to create WebDriver: {e}")
-        return 1
-    
     try:
         # Run tests
         runner = SmokeTestRunner()
         
         if len(configs) == 1:
             print(f"Running smoke test for: {configs[0]['name']}")
+            
+            # Create driver with appropriate configuration for desktop/web mode
+            debug_port = None
+            headless_mode = args.headless
+            if configs[0]['type'] == 'desktop':
+                # For desktop mode, always run Selenium Chrome in headless mode to avoid distraction
+                # The main desktop app window will still be visible
+                headless_mode = True
+                print("Desktop mode detected - running automation browser in headless mode")
+            
+            driver = create_driver(args.browser, headless_mode, debug_port)
+            driver.implicitly_wait(10)
+            
             result = runner.run_single_test(configs[0], driver, test_image_path)
             results = [result]
         else:
             print(f"Running smoke tests for {len(configs)} configurations...")
+            # For multiple configs, create a standard driver (no desktop mode support for batch)
+            driver = create_driver(args.browser, args.headless)
+            driver.implicitly_wait(10)
             results = runner.run_all_tests(driver, test_image_path, args.config)
         
         # Print summary

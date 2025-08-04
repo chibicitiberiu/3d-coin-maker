@@ -10,6 +10,12 @@ build-hmm:
     set -e
     echo "Building HMM library..."
     
+    # Check if HMM binary already exists
+    if [ -f "{{hmm_dir}}/hmm" ] && [ -x "{{hmm_dir}}/hmm" ]; then
+        echo "HMM binary already exists and is executable, skipping build"
+        exit 0
+    fi
+    
     # Create build and external directories
     mkdir -p build/external
     
@@ -50,6 +56,11 @@ build-hmm:
     fi
     
     # Build HMM
+    if [ ! -d "{{hmm_dir}}" ]; then
+        echo "Error: HMM directory {{hmm_dir}} not found"
+        exit 1
+    fi
+    
     cd {{hmm_dir}}
     if [ ! -f "Makefile" ]; then
         echo "Error: No Makefile found in HMM directory"

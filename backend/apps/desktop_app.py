@@ -7,6 +7,7 @@ background tasks and desktop-specific configuration defaults.
 """
 
 import logging
+from typing import Optional
 
 from config.factory import create_desktop_settings
 from core.base_app import BaseApp
@@ -174,10 +175,19 @@ class DesktopApp(BaseApp):
         
         logger.info(f"Starting PyWebView GUI pointing to SvelteKit server: {frontend_url}")
         
+        # Check if debugging mode is enabled
+        enable_debugging = self._should_enable_debugging()
+        debug_port = 9222  # Standard Chrome DevTools port
+        
+        if enable_debugging:
+            logger.info(f"Desktop debugging mode enabled on port {debug_port}")
+        
         # Create PyWebView wrapper
         self._pywebview_wrapper = PyWebViewWrapper(
             frontend_url=frontend_url,
-            backend_port=self._allocated_backend_port
+            backend_port=self._allocated_backend_port,
+            enable_debugging=enable_debugging,
+            debug_port=debug_port
         )
         
         # Try to start pywebview
@@ -204,6 +214,33 @@ class DesktopApp(BaseApp):
         
         # FastAPI server runs in daemon thread, so it will exit automatically
         logger.info("Server cleanup complete")
+    
+    def _should_enable_debugging(self) -> bool:
+        """Check if desktop debugging should be enabled.
+        
+        Returns:
+            True if debugging should be enabled (for smoke tests), False otherwise
+        """
+        import os
+        # Enable debugging if:
+        # 1. COIN_MAKER_DEBUG_MODE environment variable is set
+        # 2. COIN_MAKER_SMOKE_TEST environment variable is set (for smoke tests)
+        # 3. Debug mode is enabled in settings
+        return (
+            os.environ.get('COIN_MAKER_DEBUG_MODE', '').lower() in ('true', '1', 'yes') or
+            os.environ.get('COIN_MAKER_SMOKE_TEST', '').lower() in ('true', '1', 'yes') or
+            (self.settings and getattr(self.settings, 'debug', False))
+        )
+    
+    def get_debug_port(self) -> Optional[int]:
+        """Get the debugging port if available.
+        
+        Returns:
+            Debug port number if debugging is enabled, None otherwise
+        """
+        if self._pywebview_wrapper and hasattr(self._pywebview_wrapper, 'get_debug_port'):
+            return self._pywebview_wrapper.get_debug_port()
+        return None
 
     def _run_backend_server(self) -> None:
         """Run the backend FastAPI server."""

@@ -93,6 +93,21 @@ class ConfigDetector:
         except ImportError:
             return False
     
+    def _poetry_env_ready(self):
+        """Check if Poetry environment is ready for desktop/web server."""
+        try:
+            # Check if Poetry is available and can run Python with required modules
+            result = subprocess.run(
+                ['poetry', 'run', 'python', '-c', 'import fastapi, uvicorn'],
+                cwd=os.path.join(self.project_root, 'backend'),
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
+    
     def detect_configurations(self) -> List[Dict[str, Any]]:
         """Detect all available test configurations."""
         configs = []
@@ -187,15 +202,16 @@ class ConfigDetector:
             })
         
         # Desktop configurations
-        if self._python_env_ready():
+        if self._poetry_env_ready():
             configs.append({
                 'name': 'Desktop Application',
                 'type': 'desktop',
                 'mode': 'desktop',
                 'environment': 'development',
-                'command': ['just', 'run-desktop'] if self._can_run_just() else None,
-                'ports': {'backend': None, 'frontend': None},  # Dynamic ports
-                'available': True
+                'command': ['poetry', 'run', 'python', 'desktop_main.py'],
+                'ports': {'backend': 8000, 'frontend': 5173},  # Fixed ports for desktop
+                'available': True,
+                'working_directory': os.path.join(self.project_root, 'backend')
             })
         
         # AppImage configuration

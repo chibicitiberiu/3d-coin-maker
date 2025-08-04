@@ -19,8 +19,40 @@ class HMMManifoldGenerator(ISTLGenerator):
     """HMM + Manifold3D implementation of ISTLGenerator for fast and reliable mesh generation."""
 
     def __init__(self, timeout_seconds: int = 60):
-        self.hmm_binary = 'hmm'
+        self.hmm_binary = self._find_hmm_binary()
         self.timeout = timeout_seconds
+
+    def _find_hmm_binary(self) -> str:
+        """Find the HMM binary, checking project structure first, then PATH."""
+        import os
+        
+        # First, try to find HMM binary in the project structure
+        # Get the project root (go up from backend/ to project root)
+        current_file = Path(__file__)
+        backend_dir = current_file.parent.parent.parent  # backend/core/services -> backend
+        project_root = backend_dir.parent  # backend -> project root
+        
+        # Check project build directory
+        project_hmm_paths = [
+            project_root / "build" / "external" / "hmm" / "hmm",
+            project_root / "build" / "hmm",
+            project_root / "external" / "hmm" / "hmm"
+        ]
+        
+        for hmm_path in project_hmm_paths:
+            if hmm_path.exists() and os.access(hmm_path, os.X_OK):
+                logger.info(f"Found HMM binary in project: {hmm_path}")
+                return str(hmm_path)
+        
+        # Fall back to PATH lookup
+        hmm_in_path = shutil.which('hmm')
+        if hmm_in_path:
+            logger.info(f"Found HMM binary in PATH: {hmm_in_path}")
+            return hmm_in_path
+        
+        # Default to 'hmm' (will fail later with clear error)
+        logger.warning("HMM binary not found in project or PATH, using 'hmm' (will likely fail)")
+        return 'hmm'
 
     def generate_stl(
         self,

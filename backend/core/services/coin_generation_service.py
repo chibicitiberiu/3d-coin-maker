@@ -154,7 +154,10 @@ class CoinGenerationService:
             stl_filename = "coin.stl"
             stl_path = self.file_storage.generations_dir / generation_id / stl_filename
 
-            self.stl_generator.generate_stl(heightmap_path, coin_parameters, stl_path, progress_callback)
+            success, error_msg = self.stl_generator.generate_stl(heightmap_path, coin_parameters, stl_path, progress_callback)
+            
+            if not success:
+                raise ProcessingError(f"STL generation failed: {error_msg}")
 
         except Exception as e:
             if isinstance(e, ValidationError | ProcessingError):

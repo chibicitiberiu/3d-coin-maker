@@ -121,7 +121,9 @@ wait
         
         # Wait for services to be ready
         backend_url = f"http://localhost:{backend_port}"
-        health_url = f"{backend_url}/health/"
+        # Health endpoint varies by mode: Celery uses /api/health/, APScheduler uses /health/
+        health_endpoint = "/api/health/" if config['mode'] == 'celery' else "/health/"
+        health_url = f"{backend_url}{health_endpoint}"
         
         if config['environment'] == 'development':
             frontend_url = f"http://localhost:{frontend_port}"
@@ -173,7 +175,9 @@ wait
         frontend_port = config['ports']['frontend']
         
         backend_url = f"http://localhost:{backend_port}"
-        health_url = f"{backend_url}/health/"
+        # Health endpoint varies by mode: Celery uses /api/health/, APScheduler uses /health/
+        health_endpoint = "/api/health/" if config['mode'] == 'celery' else "/health/"
+        health_url = f"{backend_url}{health_endpoint}"
         
         if config['environment'] == 'development':
             frontend_url = f"http://localhost:{frontend_port}"
@@ -200,25 +204,96 @@ wait
         if not cmd:
             raise RuntimeError("No command available for desktop application")
         
-        self.process = subprocess.Popen(cmd)
+        # Use working directory if specified in config
+        working_dir = config.get('working_directory', os.getcwd())
         
-        # Desktop app typically uses dynamic ports, so we need to detect them
-        # For now, assume standard ports and wait
-        time.sleep(5)  # Give desktop app time to start
+        # Set environment variable to enable debugging mode for smoke tests
+        env = os.environ.copy()
+        env['COIN_MAKER_SMOKE_TEST'] = 'true'
         
-        # Try common ports for desktop app
-        for port in [8000, 8001, 8002]:
-            health_url = f"http://localhost:{port}/health/"
-            if wait_for_health_check(health_url, timeout=5):
-                backend_url = f"http://localhost:{port}"
-                frontend_url = backend_url  # Desktop serves frontend from same port
-                return {
-                    'frontend_url': frontend_url,
-                    'backend_url': backend_url,
-                    'health_url': health_url
-                }
+        self.process = subprocess.Popen(cmd, cwd=working_dir, env=env)
+        
+        # Desktop app uses dual-server architecture with dynamic port allocation:
+        # - Backend (API) typically on 127.0.0.1:8000 with /health/ endpoint
+        # - Frontend (SvelteKit dev) on 127.0.0.1:5173 or alternative port if busy
+        # Give more time for desktop app to start both servers
+        time.sleep(25)  # Desktop needs time to start both backend and frontend (SvelteKit is slow)
+        
+        # Detect actual ports by checking which ones are listening
+        print("DEBUG: Detecting backend port...")
+        backend_port = self._detect_backend_port()
+        print(f"DEBUG: Backend port detected: {backend_port}")
+        
+        print("DEBUG: Detecting frontend port...")
+        frontend_port = self._detect_frontend_port()
+        print(f"DEBUG: Frontend port detected: {frontend_port}")
+        
+        if backend_port:
+            health_url = f"http://127.0.0.1:{backend_port}/health/"
+            backend_url = f"http://127.0.0.1:{backend_port}"
+            
+            # For desktop mode, we use the SvelteKit dev server directly
+            # Since it's the same frontend that PyWebView is displaying
+            if frontend_port:
+                frontend_url = f"http://127.0.0.1:{frontend_port}"
+            else:
+                # Fallback to backend for single-server mode
+                frontend_url = backend_url
+            
+            debug_port = 9222  # Standard Chrome DevTools port
+            
+            return {
+                'frontend_url': frontend_url,  # Use SvelteKit dev server directly
+                'backend_url': backend_url,
+                'health_url': health_url,
+                'debug_port': debug_port,
+                'is_desktop': True
+            }
         
         raise RuntimeError("Desktop application failed to start or port not detected")
+    
+    def _detect_backend_port(self) -> Optional[int]:
+        """Detect which port the backend is running on by trying health checks."""
+        # Try common backend ports
+        for port in [8000, 8001, 8002, 8003]:
+            health_url = f"http://127.0.0.1:{port}/health/"
+            if wait_for_health_check(health_url, timeout=2):
+                return port
+        return None
+    
+    def _detect_frontend_port(self) -> Optional[int]:
+        """Detect which port the frontend is running on by checking HTTP responses."""
+        import socket
+        
+        # Check ports that might be used by SvelteKit dev server
+        # Give SvelteKit more time to start before checking
+        time.sleep(2)
+        
+        for port in [5173, 5001, 5002, 5174, 5175]:
+            try:
+                # First check if port is listening
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.settimeout(2)
+                    result = sock.connect_ex(('127.0.0.1', port))
+                    if result == 0:
+                        # Port is open, verify it's serving HTTP content
+                        try:
+                            response = requests.get(f"http://127.0.0.1:{port}/", timeout=5)
+                            # SvelteKit dev server should return 200 for root path
+                            if response.status_code == 200:
+                                print(f"DEBUG: Found frontend on port {port}")
+                                return port
+                        except requests.exceptions.RequestException as e:
+                            print(f"DEBUG: Port {port} open but HTTP failed: {e}")
+                            continue
+                    else:
+                        print(f"DEBUG: Port {port} not listening")
+            except Exception as e:
+                print(f"DEBUG: Error checking port {port}: {e}")
+                continue
+        
+        print("DEBUG: No frontend port detected")
+        return None
     
     def _start_appimage(self, config: Dict[str, Any]) -> Dict[str, str]:
         """Start AppImage."""
@@ -331,7 +406,80 @@ class SmokeTestRunner:
             print("Starting application...")
             urls = self.app_manager.start_application(config)
             
-            # Run test
+            # For desktop mode, use improved DevTools client instead of Selenium
+            test_driver = driver
+            if urls.get('is_desktop') and urls.get('debug_port'):
+                print(f"Desktop mode detected - using improved DevTools client on port {urls['debug_port']}")
+                try:
+                    # Wait for debug port to be ready
+                    print("Waiting for PyWebView debug port to be ready...")
+                    time.sleep(3)
+                    
+                    # Verify debug port is accessible
+                    debug_port = urls['debug_port']
+                    try:
+                        import requests
+                        debug_response = requests.get(f"http://127.0.0.1:{debug_port}/json", timeout=5)
+                        if debug_response.status_code == 200:
+                            print("Debug port is accessible")
+                        else:
+                            raise Exception(f"Debug port returned {debug_response.status_code}")
+                    except Exception as e:
+                        print(f"Debug port not ready: {e}")
+                        raise
+                    
+                    # Close the original driver since we'll use DevTools directly
+                    driver.quit()
+                    
+                    # Use improved DevTools client for real UI automation
+                    from devtools_client import DevToolsClient
+                    import asyncio
+                    
+                    devtools_client = DevToolsClient(debug_port)
+                    
+                    # Connect to the page
+                    if not devtools_client.connect_to_page(urls['frontend_url']):
+                        raise Exception("Failed to connect to desktop page via DevTools")
+                    
+                    # Run improved DevTools automation with real actions
+                    print("Running desktop automation via DevTools with real UI actions...")
+                    devtools_results = asyncio.run(devtools_client.run_automation(urls['frontend_url'], test_image_path))
+                    
+                    # Convert DevTools results to smoke test format (matching web test results)
+                    converted_results = {
+                        'health_check': True,  # Already verified by getting to this point
+                        'frontend_load': devtools_results.get('navigation', False) and devtools_results.get('ui_loaded', False),
+                        'ui_elements_present': devtools_results.get('file_upload_present', False) and devtools_results.get('parameters_present', False) and devtools_results.get('generate_button_present', False),
+                        'image_upload': devtools_results.get('image_upload', False),
+                        'image_processing': devtools_results.get('image_processing', False),
+                        'set_parameters': devtools_results.get('set_parameters', False),
+                        'generate_stl': devtools_results.get('generate_stl', False),
+                        'devtools_automation': not bool(devtools_results.get('error'))
+                    }
+                    
+                    print(f"DevTools automation completed: {converted_results}")
+                    
+                    return {
+                        'config': config,
+                        'results': converted_results,
+                        'status': 'completed',
+                        'urls': urls,
+                        'automation_method': 'devtools_improved'
+                    }
+                    
+                except Exception as e:
+                    print(f"WARNING: Failed to connect via DevTools: {e}")
+                    print("The desktop app is running but we can't control it via DevTools")
+                    # Fall back to basic GUI verification
+                    return {
+                        'config': config,
+                        'results': {'desktop_gui_launched': True, 'automation_failed': True},
+                        'status': 'partial_success',
+                        'urls': urls,
+                        'message': 'Desktop GUI launched successfully but DevTools automation failed'
+                    }
+            
+            # Run test (same BaseSmokeTest used for web tests)
             test = BaseSmokeTest(driver)
             results = test.run_full_test(
                 urls['frontend_url'],

@@ -31,6 +31,7 @@ services:
     build:
       args:
         ENVIRONMENT: production
+        PUBLIC_API_BASE_URL: http://localhost:8000
     ports:
       - "3000:80"
     env_file:

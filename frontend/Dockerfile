@@ -36,6 +36,10 @@ RUN apk add --no-cache dumb-init
 # Set working directory
 WORKDIR /app
 
+# Build arguments for environment variables
+ARG ENVIRONMENT=development
+ARG PUBLIC_API_BASE_URL
+
 # Install pnpm globally with specific version for reproducibility
 RUN npm install -g pnpm@9.15.0
 
@@ -47,6 +51,9 @@ RUN pnpm install --frozen-lockfile --production=false
 
 # Copy source code
 COPY . .
+
+# Set environment variables for build
+ENV PUBLIC_API_BASE_URL=$PUBLIC_API_BASE_URL
 
 # Build the application with production optimizations
 RUN pnpm run build
@@ -63,7 +70,7 @@ RUN addgroup -g 101 -S nginx || true \
     && adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx || true
 
 # Copy built files to nginx with proper permissions
-COPY --from=builder --chown=nginx:nginx /app/build /usr/share/nginx/html
+COPY --from=builder --chown=nginx:nginx /build/frontend /usr/share/nginx/html
 
 # Copy optimized nginx configuration
 COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
@@ -75,8 +82,8 @@ RUN rm -f /etc/nginx/conf.d/default.conf.bak
 RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run \
     && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /var/run /etc/nginx
 
-# Switch to non-root user
-USER nginx
+# Run nginx as root for now (typical in containers)
+# USER nginx
 
 # Expose port 80
 EXPOSE 80
