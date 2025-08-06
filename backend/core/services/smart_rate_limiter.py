@@ -1,9 +1,14 @@
 
-import redis
+# Conditionally import redis-related dependencies (not available in desktop mode)
+try:
+    import redis
+    from core.services.redis_rate_limiter import RedisRateLimiter
+except ImportError:
+    redis = None
+    RedisRateLimiter = None
 
 from core.interfaces.rate_limiter import IRateLimiter
 from core.services.memory_rate_limiter import MemoryRateLimiter
-from core.services.redis_rate_limiter import RedisRateLimiter
 
 
 class SmartRateLimiter(IRateLimiter):
@@ -29,7 +34,7 @@ class SmartRateLimiter(IRateLimiter):
         self.max_generations_burst = max_generations_burst
         self.cleanup_interval_seconds = cleanup_interval_seconds
 
-        if use_redis:
+        if use_redis and redis is not None and RedisRateLimiter is not None:
             try:
                 # Try to initialize Redis rate limiter
                 redis_client = redis.from_url(redis_url)
@@ -44,7 +49,7 @@ class SmartRateLimiter(IRateLimiter):
                     cleanup_interval_seconds=self.cleanup_interval_seconds
                 )
                 self._redis_available = True
-            except (redis.ConnectionError, redis.TimeoutError, Exception):
+            except Exception:  # Handle all exceptions including redis errors when redis is available
                 self._rate_limiter = MemoryRateLimiter(
                     max_generations_per_hour=self.max_generations_per_hour,
                     max_concurrent_generations=self.max_concurrent_generations,

@@ -30,8 +30,12 @@ class PathResolver:
             # In desktop mode, assume we're running from the backend directory
             # or from a PyInstaller bundle
             if getattr(sys, 'frozen', False):
-                # PyInstaller bundle
-                return Path(sys.executable).parent
+                # PyInstaller bundle - use _MEIPASS where bundled files are extracted
+                if hasattr(sys, '_MEIPASS'):
+                    return Path(sys._MEIPASS)
+                else:
+                    # Fallback for other frozen environments
+                    return Path(sys.executable).parent
             else:
                 # Development mode - find the project root
                 current = Path(__file__).parent
@@ -57,40 +61,58 @@ class PathResolver:
 
     def get_app_data_dir(self, app_data_dir_setting: str | None = None) -> Path:
         """Get the application data directory."""
-        from config.settings import Settings
-        settings = Settings()
+        # Check if we're in a PyInstaller bundle (AppImage)
+        is_pyinstaller = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
         
-        configured_dir = app_data_dir_setting or self._app_data_dir_setting or settings.app_data_dir
-        app_data_path = Path(configured_dir)
+        # Debug logging to understand what's happening
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"PathResolver.get_app_data_dir: desktop_mode={self._desktop_mode}, frozen={getattr(sys, 'frozen', False)}, has_MEIPASS={hasattr(sys, '_MEIPASS')}, is_pyinstaller={is_pyinstaller}")
         
-        # If it's a relative path, resolve it relative to the backend directory
-        if not app_data_path.is_absolute():
-            app_data_path = self._app_root / app_data_path
-        
+        if self._desktop_mode and is_pyinstaller:
+            # In PyInstaller bundle - use user's home directory for data
+            home_dir = Path.home()
+            app_data_path = home_dir / ".coin-maker" / "data"
+            logger.debug(f"Using PyInstaller bundle data path: {app_data_path}")
+        else:
+            # Normal mode - use configured directory
+            from config.settings import Settings
+            settings = Settings()
+
+            configured_dir = app_data_dir_setting or self._app_data_dir_setting or settings.app_data_dir
+            app_data_path = Path(configured_dir)
+            logger.debug(f"Using configured data path: {app_data_path} (from {configured_dir})")
+
+            # If it's a relative path, resolve it relative to the backend directory
+            if not app_data_path.is_absolute():
+                app_data_path = self._app_root / app_data_path
+                logger.debug(f"Resolved relative path to: {app_data_path}")
+
         # Ensure directory exists
+        logger.debug(f"Creating directory: {app_data_path}")
         app_data_path.mkdir(parents=True, exist_ok=True)
         return app_data_path
-    
+
     def get_generations_dir(self, app_data_dir_setting: str | None = None) -> Path:
         """Get the generations directory for file storage."""
         generations_path = self.get_app_data_dir(app_data_dir_setting) / "generations"
-        
+
         # Ensure directory exists
         generations_path.mkdir(parents=True, exist_ok=True)
         return generations_path
-    
+
     def get_logs_dir(self, app_data_dir_setting: str | None = None) -> Path:
         """Get the logs directory."""
         logs_path = self.get_app_data_dir(app_data_dir_setting) / "logs"
-        
+
         # Ensure directory exists
         logs_path.mkdir(parents=True, exist_ok=True)
         return logs_path
-    
+
     def get_settings_dir(self, app_data_dir_setting: str | None = None) -> Path:
         """Get the settings directory."""
         settings_path = self.get_app_data_dir(app_data_dir_setting) / "settings"
-        
+
         # Ensure directory exists
         settings_path.mkdir(parents=True, exist_ok=True)
         return settings_path
@@ -101,8 +123,30 @@ class PathResolver:
 
     def get_frontend_build_dir(self) -> Path:
         """Get the frontend build directory path."""
+        # Check for environment variable override first
+        import os
+        env_frontend_dir = os.environ.get('FRONTEND_BUILD_DIR')
+        if env_frontend_dir:
+            return Path(env_frontend_dir)
+        
         if self._desktop_mode:
-            # Desktop mode - frontend build is in build directory
+            # Desktop mode - check if running in PyInstaller bundle
+            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                # PyInstaller bundle - frontend is bundled as data files
+                # Check multiple possible locations where frontend could be bundled
+                possible_locations = [
+                    Path(sys._MEIPASS) / "frontend" / "build",  # Original spec path
+                    Path(sys.executable).parent / "share" / "coin-maker-frontend",  # AppImage share path
+                    Path(sys._MEIPASS) / "frontend",  # Direct bundled path
+                ]
+                
+                for location in possible_locations:
+                    if location.exists() and (location / "index.html").exists():
+                        return location
+                        
+                # Fallback: return the first location anyway for error reporting
+                return possible_locations[0]
+            # Development mode - frontend build is in build directory
             build_path = self._app_root / "build" / "frontend"
         else:
             # Web mode - build is typically served by separate container

@@ -1,42 +1,27 @@
 """
-Configuration Factory Functions
+Web Configuration Factory
 
-Provides factory functions for creating different types of settings instances
-based on deployment mode and environment detection.
+Provides factory functions for creating web settings instances.
+Desktop-specific factories are in desktop/config/factory.py
 """
 
+from config.config_loader import ConfigLoader
 from config.settings import Settings
-
-from .desktop_settings import DesktopSettings
 
 
 def create_web_settings() -> Settings:
-    """Create settings instance optimized for web deployment."""
-    return Settings()
+    """Create settings instance optimized for web deployment with INI config loading."""
 
+    # Load configuration from INI files
+    config_loader = ConfigLoader()
+    ini_config = config_loader.load_config()
 
-def create_desktop_settings() -> DesktopSettings:
-    """Create settings instance optimized for desktop deployment."""
-    return DesktopSettings()
-
-
-def create_settings(desktop_mode: bool | None = None) -> Settings | DesktopSettings:
-    """Create settings instance based on mode detection or explicit parameter."""
-
-    # Auto-detect desktop mode if not specified
-    if desktop_mode is None:
-        # Create a temporary settings instance to check environment indicators
-        temp_settings = Settings()
-        desktop_mode = temp_settings.should_use_desktop_mode()
-
-    if desktop_mode:
-        return create_desktop_settings()
-    else:
-        return create_web_settings()
+    # Create web settings with INI config applied
+    return Settings(**ini_config)
 
 
 # Backward compatibility - global settings instance
-settings = create_settings()
+settings = create_web_settings()
 
 
 # Helper functions for backward compatibility

@@ -3,9 +3,6 @@
 
 services:
   backend:
-    build:
-      args:
-        ENVIRONMENT: production
     volumes:
       - temp_data:/app/temp
       - db_data:/app/data
@@ -28,15 +25,13 @@ services:
         max-file: "3"
 
   frontend:
-    build:
-      args:
-        ENVIRONMENT: production
-        PUBLIC_API_BASE_URL: http://localhost:8000
     ports:
       - "3000:80"
     env_file:
       - config/frontend.base.env
       - config/frontend.production.env
+    environment:
+      - PUBLIC_API_BASE_URL=http://localhost:8000/api
     depends_on:
       - backend
     restart: unless-stopped

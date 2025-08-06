@@ -9,9 +9,10 @@ from core.services.path_resolver import path_resolver
 class FileSystemStorage(IFileStorage):
     """File system implementation of IFileStorage."""
 
-    def __init__(self, generations_dir: str | None = None):
-        # Use path resolver for consistent generations directory handling
-        self._generations_dir = path_resolver.get_generations_dir(generations_dir)
+    def __init__(self, generations_dir: str | None = None, path_resolver_instance: 'PathResolver | None' = None):
+        # Use provided path resolver or fall back to global instance
+        resolver = path_resolver_instance or path_resolver
+        self._generations_dir = resolver.get_generations_dir(generations_dir)
 
     @property
     def generations_dir(self) -> Path:

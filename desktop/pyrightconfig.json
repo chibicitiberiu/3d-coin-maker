@@ -1,0 +1,22 @@
+{
+  "include": [
+    "."
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/node_modules"
+  ],
+  "extraPaths": [
+    "../backend"
+  ],
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnusedImport": true,
+  "reportUnusedVariable": true,
+  "reportDuplicateImport": true,
+  "strictListInference": true,
+  "strictDictionaryInference": true,
+  "strictSetInference": true
+}

@@ -1,0 +1,43 @@
+# Docker container for building AppImage with compatible Python version
+FROM python:3.12-slim
+
+# Install system dependencies for AppImage building
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    build-essential \
+    git \
+    cmake \
+    make \
+    pkg-config \
+    libglm-dev \
+    file \
+    desktop-file-utils \
+    python3-venv \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js for frontend building
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Install pnpm
+RUN npm install -g pnpm@9.15.0
+
+# Upgrade pip and install Poetry for Python dependency management
+RUN python3 -m pip install --upgrade pip
+RUN pip install poetry
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy project files
+COPY . .
+
+# Set environment variables
+ENV PYTHONPATH=/workspace/backend:/workspace/desktop
+ENV PATH=/workspace/build/external/hmm:$PATH
+ENV HOME=/home/appuser
+
+# Default command
+CMD ["bash"]

@@ -13,4 +13,6 @@ export default defineConfig({
 	worker: {
 		format: 'es'
 	},
+	// Enable dependency pre-bundling cache
+	cacheDir: 'node_modules/.vite'
 });

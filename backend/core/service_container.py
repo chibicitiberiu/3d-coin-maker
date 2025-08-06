@@ -11,7 +11,12 @@ if TYPE_CHECKING:
     from core.interfaces.task_queue import TaskQueue
 
 from core.services.apscheduler_task_queue import APSchedulerTaskQueue
-from core.services.celery_task_queue import CeleryTaskQueue
+
+# Conditionally import celery-related services (not available in desktop mode)
+try:
+    from core.services.celery_task_queue import CeleryTaskQueue
+except ImportError:
+    CeleryTaskQueue = None
 from core.services.coin_generation_service import CoinGenerationService
 from core.services.file_storage import FileSystemStorage
 from core.services.hmm_manifold_generator import HMMManifoldGenerator
@@ -31,8 +36,11 @@ class ServiceContainer:
     def get_file_storage(self) -> FileSystemStorage:
         """Get file storage service."""
         if 'file_storage' not in self._services:
+            # Use the path resolver to ensure desktop mode is properly handled
+            path_resolver = self.get_path_resolver()
             self._services['file_storage'] = FileSystemStorage(
-                generations_dir=self.settings.app_data_dir
+                generations_dir=self.settings.app_data_dir,
+                path_resolver_instance=path_resolver
             )
         return self._services['file_storage']
 
@@ -46,7 +54,8 @@ class ServiceContainer:
         """Get STL generator service."""
         if 'stl_generator' not in self._services:
             self._services['stl_generator'] = HMMManifoldGenerator(
-                timeout_seconds=self.settings.hmm_timeout_seconds
+                timeout_seconds=self.settings.hmm_timeout_seconds,
+                hmm_binary_path=self.settings.hmm_binary_path
             )
         return self._services['stl_generator']
 
@@ -68,6 +77,8 @@ class ServiceContainer:
         """Get task queue service."""
         if 'task_queue' not in self._services:
             if self.settings.use_celery:
+                if CeleryTaskQueue is None:
+                    raise ImportError("Celery is not available - cannot use celery task queue")
                 self._services['task_queue'] = CeleryTaskQueue()
             else:
                 self._services['task_queue'] = APSchedulerTaskQueue()

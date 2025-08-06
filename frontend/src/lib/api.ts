@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/public';
 
-const API_BASE_URL = env.PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = env.PUBLIC_API_BASE_URL || '/api';
 
 export interface GenerationStatus {
 	generation_id: string;

@@ -5,18 +5,19 @@ Provides desktop-optimized settings for standalone application deployment.
 """
 
 from pydantic import Field
+
 try:
     from platformdirs import user_data_dir
 except ImportError:
     # Fallback implementation if platformdirs is not available
     import os
     import platform
-    
+
     def user_data_dir(appname: str, appauthor: str = None) -> str:
         """Simple fallback for platform-specific data directories."""
         system = platform.system()
         home = os.path.expanduser("~")
-        
+
         if system == "Windows":
             # Windows: %APPDATA%\appname
             appdata = os.environ.get("APPDATA", os.path.join(home, "AppData", "Roaming"))
@@ -27,6 +28,7 @@ except ImportError:
         else:
             # Linux/Unix: ~/.local/share/appname
             return os.path.join(home, ".local", "share", appname)
+
 
 from config.settings import Settings
 
@@ -78,6 +80,53 @@ class DesktopSettings(Settings):
     image_processing_timeout_seconds: int = Field(default=300, description="Longer timeout for desktop")
     stl_generation_timeout_seconds: int = Field(default=600, description="Longer timeout for desktop")
 
+    # Desktop GUI settings
+    pywebview_gui: str = Field(default="qt", description="PyWebView GUI backend (qt, cef, gtk)")
+    qtwebengine_chromium_flags: str = Field(
+        default="--enable-gpu --ignore-gpu-blocklist --use-gl=angle",
+        description="Qt WebEngine Chromium flags"
+    )
+    chromium_flags: list[str] = Field(
+        default=[
+            "--enable-gpu",
+            "--enable-webgl",
+            "--enable-webgl2",
+            "--ignore-gpu-blocklist",
+            "--enable-gpu-rasterization",
+            "--use-gl=angle",
+            "--enable-accelerated-2d-canvas",
+            "--disable-gpu-sandbox"
+        ],
+        description="Chromium command line flags for desktop GUI"
+    )
+
+    # Debug settings
+    debug_port: int = Field(default=-1, description="Debug port for desktop GUI (-1 to disable)")
+
     def is_desktop_mode(self) -> bool:
         """Desktop settings are always in desktop mode."""
         return True
+
+    def should_enable_debugging(self) -> bool:
+        """Check if desktop debugging should be enabled.
+
+        Returns:
+            True if debugging should be enabled, False otherwise
+        """
+        return self.debug_port > 0 or self.debug
+
+    def get_debug_port(self) -> int | None:
+        """Get debug port if debugging is enabled.
+
+        Returns:
+            Debug port number if enabled, None otherwise
+        """
+        return self.debug_port if self.debug_port > 0 else None
+
+    def get_chromium_flags_string(self) -> str:
+        """Get chromium flags as a space-separated string.
+
+        Returns:
+            Space-separated string of chromium flags
+        """
+        return ' '.join(self.chromium_flags)

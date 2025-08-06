@@ -3,14 +3,7 @@
 
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        ENVIRONMENT: ${ENVIRONMENT:-development}
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-        USE_CELERY: ${USE_CELERY:-true}
+    image: ${DOCKER_IMAGE_BACKEND}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     env_file:
@@ -19,11 +12,7 @@ services:
     restart: ${RESTART_POLICY:-no}
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        ENVIRONMENT: ${ENVIRONMENT:-development}
+    image: ${DOCKER_IMAGE_FRONTEND}
     env_file:
       - config/frontend.base.env
       - config/frontend.${ENVIRONMENT:-development}.env
@@ -38,14 +27,7 @@ services:
       - celery
 
   celery:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        ENVIRONMENT: ${ENVIRONMENT:-development}
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-        USE_CELERY: ${USE_CELERY:-true}
+    image: ${DOCKER_IMAGE_CELERY_WORKER}
     env_file:
       - config/backend.base.env
       - config/backend.${ENVIRONMENT:-development}.env
@@ -57,14 +39,7 @@ services:
       - celery
 
   celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        ENVIRONMENT: ${ENVIRONMENT:-development}
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-        USE_CELERY: ${USE_CELERY:-true}
+    image: ${DOCKER_IMAGE_CELERY_BEAT}
     env_file:
       - config/backend.base.env
       - config/backend.${ENVIRONMENT:-development}.env

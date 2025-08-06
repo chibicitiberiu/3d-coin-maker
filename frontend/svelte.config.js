@@ -13,8 +13,8 @@ const config = {
 		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 		adapter: adapter({
 			fallback: 'index.html',
-			pages: '../build/frontend',
-			assets: '../build/frontend'
+			pages: process.env.BUILD_OUTPUT || '../build/frontend',
+			assets: process.env.BUILD_OUTPUT || '../build/frontend'
 		}),
 		prerender: {
 			entries: ['/', '/about']

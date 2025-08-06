@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "FastAPI backend for 3D Coin Maker - 3D printable coin generator"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
-package-mode = false
+package-mode = true
+packages = [
+    {include = "apps"},
+    {include = "config"},
+    {include = "core"},
+]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"
@@ -20,9 +25,6 @@ fastapi = "^0.116.1"
 uvicorn = "^0.35.0"
 python-multipart = "^0.0.20"
 pydantic-settings = "^2.5.2"
-pywebview = {version = "^5.4", extras = ["qt"]}
-PyQt6 = {version = "^6.7.0", markers = "sys_platform == 'linux'"}
-PyQt6-WebEngine = {version = "^6.7.0", markers = "sys_platform == 'linux'"}
 
 [tool.poetry.group.dev.dependencies]
 gunicorn = "^21.2.0"

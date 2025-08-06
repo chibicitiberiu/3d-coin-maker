@@ -207,11 +207,10 @@ wait
         # Use working directory if specified in config
         working_dir = config.get('working_directory', os.getcwd())
         
-        # Set environment variable to enable debugging mode for smoke tests
-        env = os.environ.copy()
-        env['COIN_MAKER_SMOKE_TEST'] = 'true'
+        # Add debug port for smoke tests
+        cmd.extend(['--debug-port', '9222'])
         
-        self.process = subprocess.Popen(cmd, cwd=working_dir, env=env)
+        self.process = subprocess.Popen(cmd, cwd=working_dir)
         
         # Desktop app uses dual-server architecture with dynamic port allocation:
         # - Backend (API) typically on 127.0.0.1:8000 with /health/ endpoint

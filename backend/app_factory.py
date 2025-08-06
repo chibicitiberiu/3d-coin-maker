@@ -12,9 +12,10 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from api.routes.router import create_api_router
-from config.factory import Settings, create_settings
+from config.factory import Settings, create_web_settings
 
 if TYPE_CHECKING:
     from core.base_app import BaseApp
@@ -38,7 +39,7 @@ def create_app(desktop_mode: bool = False, settings_override: Settings | None = 
     elif settings_override:
         app_settings = settings_override
     else:
-        app_settings = create_settings(desktop_mode=desktop_mode)
+        app_settings = create_web_settings()
 
     # Create FastAPI application with mode-specific config
     is_desktop = not app_settings.use_celery
@@ -117,29 +118,48 @@ def _configure_exception_handlers(app: FastAPI) -> None:
 def _configure_routes(app: FastAPI, app_settings: Settings, base_app: 'BaseApp | None' = None) -> None:
     """Configure API routes."""
 
-    # Define route prefix based on mode
+    # Always use /api prefix for consistency
     is_desktop = not app_settings.use_celery
-    route_prefix = "" if is_desktop else "/api"
+    route_prefix = "/api"
 
     # Include API routes
     api_router = create_api_router(route_prefix)
     app.include_router(api_router)
 
-    # Desktop-specific routes
+    # Desktop-specific static file serving
     if is_desktop:
-        @app.get("/")
-        async def root():
-            """Root endpoint redirects to frontend in desktop mode."""
-            # Use base_app services if available, otherwise create temporary ones
-            if base_app and base_app.services:
-                path_resolver = base_app.services.get_path_resolver()
-            else:
-                # Fallback to temporary service container
-                from core.service_container import ServiceContainer
-                services = ServiceContainer(app_settings)
-                path_resolver = services.get_path_resolver()
+        # Get path resolver for frontend build directory
+        if base_app and base_app.services:
+            path_resolver = base_app.services.get_path_resolver()
+        else:
+            # Fallback to temporary service container
+            from core.service_container import ServiceContainer
+            services = ServiceContainer(app_settings)
+            path_resolver = services.get_path_resolver()
 
-            if path_resolver.is_frontend_build_available():
-                return FileResponse(path_resolver.get_frontend_build_dir() / "index.html")
-            else:
-                return {"message": "Coin Maker Desktop API", "docs": "/docs"}
+        # Only mount static files if frontend build is available
+        if path_resolver.is_frontend_build_available():
+            frontend_build_dir = path_resolver.get_frontend_build_dir()
+            
+            # Mount static files - this must be done AFTER all API routes are defined
+            # The html=True parameter enables SPA routing (serves index.html for non-file routes)
+            app.mount("/", StaticFiles(directory=str(frontend_build_dir), html=True), name="frontend")
+        else:
+            # Frontend build missing - this is an error condition for desktop mode
+            import logging
+            logger = logging.getLogger(__name__)
+            frontend_build_dir = path_resolver.get_frontend_build_dir()
+            
+            logger.error(f"Frontend build not found at: {frontend_build_dir}")
+            logger.error("Desktop mode requires frontend build to be available")
+            
+            # Show error page instead of API fallback
+            @app.get("/")
+            async def frontend_missing_error():
+                """Error page shown when frontend build is missing in desktop mode."""
+                return {
+                    "error": "Frontend build missing",
+                    "message": "The frontend application could not be found. Please rebuild the frontend.",
+                    "frontend_path": str(frontend_build_dir),
+                    "instructions": "Run 'make build-frontend' to build the frontend"
+                }

@@ -72,22 +72,23 @@ class Settings(BaseSettings):
 
     # HMM settings
     hmm_timeout_seconds: int = Field(default=60, description="HMM operation timeout")
+    hmm_binary_path: str | None = Field(default=None, description="Path to HMM binary (if not provided, will auto-detect)")
 
     @property
     def app_data_path(self) -> Path:
         """Get application data directory as Path object."""
         return Path(self.app_data_dir)
-    
+
     @property
     def generations_path(self) -> Path:
         """Get generations subdirectory for file storage."""
         return self.app_data_path / "generations"
-    
+
     @property
     def logs_path(self) -> Path:
         """Get logs subdirectory."""
         return self.app_data_path / "logs"
-    
+
     @property
     def settings_path(self) -> Path:
         """Get settings subdirectory."""

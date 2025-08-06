@@ -52,8 +52,8 @@ RUN pnpm install --frozen-lockfile --production=false
 # Copy source code
 COPY . .
 
-# Set environment variables for build
-ENV PUBLIC_API_BASE_URL=$PUBLIC_API_BASE_URL
+# Set placeholder for runtime substitution
+ENV PUBLIC_API_BASE_URL=__API_BASE_URL_PLACEHOLDER__
 
 # Build the application with production optimizations
 RUN pnpm run build
@@ -78,6 +78,22 @@ COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
 # Remove default nginx config
 RUN rm -f /etc/nginx/conf.d/default.conf.bak
 
+# Create startup script for environment substitution
+RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
+    echo 'set -e' >> /docker-entrypoint.sh && \
+    echo '' >> /docker-entrypoint.sh && \
+    echo '# Replace placeholder with actual API URL from environment' >> /docker-entrypoint.sh && \
+    echo 'API_URL=${PUBLIC_API_BASE_URL:-http://localhost:8000}' >> /docker-entrypoint.sh && \
+    echo 'find /usr/share/nginx/html -type f -name "*.js" -o -name "*.html" | while read file; do' >> /docker-entrypoint.sh && \
+    echo '  if [ -f "$file" ]; then' >> /docker-entrypoint.sh && \
+    echo '    sed -i "s|__API_BASE_URL_PLACEHOLDER__|$API_URL|g" "$file"' >> /docker-entrypoint.sh && \
+    echo '  fi' >> /docker-entrypoint.sh && \
+    echo 'done' >> /docker-entrypoint.sh && \
+    echo '' >> /docker-entrypoint.sh && \
+    echo '# Start nginx' >> /docker-entrypoint.sh && \
+    echo 'exec dumb-init -- nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
+    chmod +x /docker-entrypoint.sh
+
 # Create nginx directories with proper permissions
 RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run \
     && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /var/run /etc/nginx
@@ -88,11 +104,8 @@ RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run \
 # Expose port 80
 EXPOSE 80
 
-# Use dumb-init for proper signal handling
-ENTRYPOINT ["dumb-init", "--"]
-
-# Start nginx with optimized settings
-CMD ["nginx", "-g", "daemon off; error_log /var/log/nginx/error.log warn;"]
+# Use our startup script
+CMD ["/docker-entrypoint.sh"]
 
 # Final stage selection based on environment
 FROM ${ENVIRONMENT} AS final

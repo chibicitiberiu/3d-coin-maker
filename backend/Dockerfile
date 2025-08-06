@@ -55,15 +55,15 @@ RUN pip install poetry
 # Set working directory
 WORKDIR /app
 
-# Copy poetry files
-COPY pyproject.toml poetry.lock ./
+# Copy poetry files and README for package installation
+COPY pyproject.toml poetry.lock README.md ./
 
 # Configure poetry and install dependencies based on environment
 RUN poetry config virtualenvs.create false && \
     if [ "$ENVIRONMENT" = "production" ]; then \
-        poetry install --only=main; \
+        poetry install --only=main --no-root; \
     else \
-        poetry install; \
+        poetry install --no-root; \
     fi
 
 # Production optimizations: remove build dependencies and install production servers
@@ -134,7 +134,7 @@ CMD if [ "$ENVIRONMENT" = "production" ]; then \
             --access-logfile /app/logs/access.log \
             --error-logfile /app/logs/error.log \
             --capture-output \
-            fastapi_main:app; \
+            main:app; \
     else \
-        exec python -m uvicorn fastapi_main:app --host 0.0.0.0 --port 8000 --reload; \
+        exec python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload; \
     fi

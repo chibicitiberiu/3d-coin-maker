@@ -22,11 +22,11 @@
   
   <launchable type="desktop-id">io.github.coinmaker.CoinMaker.desktop</launchable>
   
-  <url type="homepage">https://github.com/coinmaker/coin-maker</url>
-  <url type="bugtracker">https://github.com/coinmaker/coin-maker/issues</url>
+  <url type="homepage">https://github.com/chibicitiberiu/3d-coin-maker</url>
+  <url type="bugtracker">https://github.com/chibicitiberiu/3d-coin-maker/issues</url>
   
-  <metadata_license>MIT</metadata_license>
-  <project_license>MIT</project_license>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
   
   <provides>
     <binary>coin-maker</binary>
