@@ -98,4 +98,4 @@ Thumbs.db
 .tox/
 
 # Build directory (contains all build artifacts)
-build/
+build/frontend/.last_config

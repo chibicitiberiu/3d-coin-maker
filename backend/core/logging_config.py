@@ -151,15 +151,14 @@ def setup_desktop_logging(debug: bool = True) -> None:
     Args:
         debug: Whether to enable debug level logging
     """
-    import os
-    
+
     log_level = "DEBUG" if debug else "INFO"
-    
+
     # For desktop applications (especially AppImage), use a user-writable directory
     # Try user's home directory first, fall back to temp directory
     home_dir = Path.home()
     desktop_log_dir = home_dir / ".coin-maker" / "logs"
-    
+
     # Fallback to temp directory if home is not writable
     try:
         desktop_log_dir.mkdir(parents=True, exist_ok=True)
@@ -167,7 +166,7 @@ def setup_desktop_logging(debug: bool = True) -> None:
         import tempfile
         desktop_log_dir = Path(tempfile.gettempdir()) / "coin-maker-logs"
         desktop_log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     setup_logging(log_level=log_level, log_dir=desktop_log_dir, app_name="coin_maker_desktop")
 
 

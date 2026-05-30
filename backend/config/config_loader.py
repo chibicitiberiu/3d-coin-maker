@@ -56,16 +56,21 @@ class ConfigLoader:
     def _get_default_ini_path(self) -> Path | None:
         """Get path to default.ini file."""
         try:
-            from core.services.path_resolver import PathResolver
-            path_resolver = PathResolver()
-            return path_resolver.get_app_root() / "default.ini"
-        except Exception:
+            # Detect project root by looking for backend and frontend directories
+            current = Path(__file__).parent
+            while current.parent != current:
+                if (current / 'backend').exists() and (current / 'frontend').exists():
+                    return current / "default.ini"
+                current = current.parent
+            
             # Fallback: look for default.ini in current directory or parent
             current = Path.cwd()
             candidates = [current / "default.ini", current.parent / "default.ini"]
             for candidate in candidates:
                 if candidate.exists():
                     return candidate
+            return None
+        except Exception:
             return None
 
     def _get_settings_ini_path(self, app_data_dir: str | None = None) -> Path | None:

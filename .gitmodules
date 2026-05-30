@@ -1,0 +1,3 @@
+[submodule "external/hmm"]
+	path = external/hmm
+	url = https://github.com/fogleman/hmm.git

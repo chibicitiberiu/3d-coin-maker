@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.routes.router import create_api_router
@@ -138,9 +138,9 @@ def _configure_routes(app: FastAPI, app_settings: Settings, base_app: 'BaseApp |
             path_resolver = services.get_path_resolver()
 
         # Only mount static files if frontend build is available
-        if path_resolver.is_frontend_build_available():
-            frontend_build_dir = path_resolver.get_frontend_build_dir()
-            
+        if path_resolver.is_frontend_available:
+            frontend_build_dir = path_resolver.frontend_dir
+
             # Mount static files - this must be done AFTER all API routes are defined
             # The html=True parameter enables SPA routing (serves index.html for non-file routes)
             app.mount("/", StaticFiles(directory=str(frontend_build_dir), html=True), name="frontend")
@@ -148,11 +148,11 @@ def _configure_routes(app: FastAPI, app_settings: Settings, base_app: 'BaseApp |
             # Frontend build missing - this is an error condition for desktop mode
             import logging
             logger = logging.getLogger(__name__)
-            frontend_build_dir = path_resolver.get_frontend_build_dir()
-            
+            frontend_build_dir = path_resolver.frontend_dir
+
             logger.error(f"Frontend build not found at: {frontend_build_dir}")
             logger.error("Desktop mode requires frontend build to be available")
-            
+
             # Show error page instead of API fallback
             @app.get("/")
             async def frontend_missing_error():

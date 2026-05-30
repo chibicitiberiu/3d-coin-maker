@@ -2,6 +2,7 @@
 # Conditionally import redis-related dependencies (not available in desktop mode)
 try:
     import redis
+
     from core.services.redis_rate_limiter import RedisRateLimiter
 except ImportError:
     redis = None

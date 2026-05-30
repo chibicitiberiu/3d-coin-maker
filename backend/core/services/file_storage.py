@@ -3,28 +3,24 @@ from pathlib import Path
 
 from core.constants import PerformanceConstants
 from core.interfaces.storage import IFileStorage, UploadedFile
-from core.services.path_resolver import path_resolver
+from core.services.path_resolver import PathResolver
 
 
 class FileSystemStorage(IFileStorage):
     """File system implementation of IFileStorage."""
 
-    def __init__(self, generations_dir: str | None = None, path_resolver_instance: 'PathResolver | None' = None):
-        # Use provided path resolver or fall back to global instance
-        resolver = path_resolver_instance or path_resolver
-        self._generations_dir = resolver.get_generations_dir(generations_dir)
+    def __init__(self, path_resolver_instance: PathResolver):
+        self.resolver = path_resolver_instance
 
     @property
     def generations_dir(self) -> Path:
         """Get the generations directory path."""
-        return self._generations_dir
+        return self.resolver.generations_dir
 
     def save_file(self, file_data: UploadedFile, filename: str, generation_id: str) -> Path:
         """Save a file and return its path."""
-        generation_dir = self._generations_dir / generation_id
-        generation_dir.mkdir(parents=True, exist_ok=True)
+        file_path = self.resolver.get_generation_file_path(generation_id, filename)
 
-        file_path = generation_dir / filename
         with open(file_path, 'wb') as f:
             # Handle both Django-style (chunks()) and FastAPI-style (file.file) file objects
             if hasattr(file_data, 'chunks'):
@@ -46,12 +42,12 @@ class FileSystemStorage(IFileStorage):
 
     def get_file_path(self, filename: str, generation_id: str) -> Path | None:
         """Get the path to a stored file."""
-        file_path = self._generations_dir / generation_id / filename
+        file_path = self.resolver.get_generation_file_path(generation_id, filename)
         return file_path if file_path.exists() else None
 
     def delete_file(self, filename: str, generation_id: str) -> bool:
         """Delete a stored file."""
-        file_path = self._generations_dir / generation_id / filename
+        file_path = self.resolver.get_generation_file_path(generation_id, filename)
         try:
             if file_path.exists():
                 file_path.unlink()
@@ -69,7 +65,7 @@ class FileSystemStorage(IFileStorage):
         deleted_count = 0
         current_time = time.time()
 
-        for generation_dir in self._generations_dir.iterdir():
+        for generation_dir in self.resolver.generations_dir.iterdir():
             if not generation_dir.is_dir():
                 continue
 

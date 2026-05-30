@@ -5,6 +5,7 @@ Replaces the dependency-injector library with a simple manual container
 that provides proper dependency injection for services.
 """
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -39,7 +40,6 @@ class ServiceContainer:
             # Use the path resolver to ensure desktop mode is properly handled
             path_resolver = self.get_path_resolver()
             self._services['file_storage'] = FileSystemStorage(
-                generations_dir=self.settings.app_data_dir,
                 path_resolver_instance=path_resolver
             )
         return self._services['file_storage']
@@ -87,9 +87,17 @@ class ServiceContainer:
     def get_path_resolver(self) -> PathResolver:
         """Get path resolver service."""
         if 'path_resolver' not in self._services:
+            # For web mode, detect install path from current file location
+            install_path = Path(__file__).parent.parent.parent  # Go up to project root
+            
+            # Resolve app_data_dir relative to install path if it's relative
+            app_data_dir = Path(self.settings.app_data_dir)
+            if not app_data_dir.is_absolute():
+                app_data_dir = install_path / app_data_dir
+                
             self._services['path_resolver'] = PathResolver(
-                desktop_mode=self.settings.is_desktop_mode(),
-                app_data_dir_setting=self.settings.app_data_dir
+                app_data_dir=app_data_dir,
+                install_path=install_path
             )
         return self._services['path_resolver']
 

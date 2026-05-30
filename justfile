@@ -1,173 +1,234 @@
-# Coin Maker Build System
-# Modular task runner for desktop and web builds
+# Coin Maker Build System - Refactored
+# Modular, consistent, and maintainable build system with proper dependency management
 
 # Import all modules
-import "build-scripts/dependencies.just"
+import "build-scripts/deps.just"
 import "build-scripts/frontend.just"
-import "build-scripts/desktop.just"
+import "build-scripts/backend.just"
+import "build-scripts/desktop-artifacts.just"
 import "build-scripts/docker.just"
-import "build-scripts/packaging.just"
+import "build-scripts/run.just"
 import "build-scripts/utilities.just"
-import "build-scripts/smoke-tests.just"
+import "build-scripts/smoke-test.just"
 
-# Configuration variables
-config_mode := env_var_or_default('MODE', 'dev')
+# =============================================================================
+# Parameter Validation Functions
+# =============================================================================
 
-# Show available commands
+# Validate MODE parameter (debug or release)
+_validate-mode:
+    #!/usr/bin/env bash
+    mode="${MODE:-debug}"
+    if [[ "$mode" != "debug" && "$mode" != "release" ]]; then
+        echo "Error: MODE must be 'debug' or 'release', got '$mode'"
+        exit 1
+    fi
+
+# Validate VARIANT parameter (web or desktop)
+_validate-variant:
+    #!/usr/bin/env bash
+    variant="${VARIANT:-web}"
+    if [[ "$variant" != "web" && "$variant" != "desktop" ]]; then
+        echo "Error: VARIANT must be 'web' or 'desktop', got '$variant'"
+        exit 1
+    fi
+
+# Validate SCHEDULER parameter (apscheduler or celery)
+_validate-scheduler:
+    #!/usr/bin/env bash
+    scheduler="${SCHEDULER:-apscheduler}"
+    if [[ "$scheduler" != "apscheduler" && "$scheduler" != "celery" ]]; then
+        echo "Error: SCHEDULER must be 'apscheduler' or 'celery', got '$scheduler'"
+        exit 1
+    fi
+
+# Validate desktop+scheduler combination (desktop only supports apscheduler)
+_validate-desktop-scheduler:
+    #!/usr/bin/env bash
+    variant="${VARIANT:-web}"
+    scheduler="${SCHEDULER:-apscheduler}"
+    if [ "$variant" = "desktop" ] && [ "$scheduler" != "apscheduler" ]; then
+        echo "Error: Desktop variant only supports apscheduler scheduler, got '$scheduler'"
+        exit 1
+    fi
+
+# Validate all common parameters
+_validate-all: _validate-mode _validate-variant _validate-scheduler _validate-desktop-scheduler
+
+# Show available commands (default when running 'just')
 default:
     @just --list
 
 # =============================================================================
-# Quick Start Commands
+# Quick Workflow Commands
 # =============================================================================
 
 # Complete development environment setup
-dev-setup: install-deps build-hmm
-    echo "Development setup complete! Run 'just run-desktop' to start."
+dev-setup:
+    just install-deps
+    just build-deps
+    echo "Development setup complete!"
+    echo ""
+    echo "Quick start options:"
+    echo "  Desktop: just run-desktop-local"
+    echo "  Web:     just run-web-local"
+    echo "  Docker:  just run-web-docker"
 
-# Quick development build (frontend + dependencies)
-dev-build: install-deps build-frontend
+# Quick development workflow - desktop
+dev-desktop mode="debug":
+    just run-desktop-local mode="{{mode}}"
 
-# Quick production build (everything for deployment)
-prod-build mode="prod": (build-desktop mode)
+# Quick development workflow - web local
+dev-web mode="debug" scheduler="apscheduler":
+    just run-web-local mode="{{mode}}" scheduler="{{scheduler}}"
 
-# Quick Docker development start
-docker-dev profile="": (run-docker-detached "dev" profile)
+# Quick development workflow - web docker
+dev-web-docker mode="debug" scheduler="apscheduler":
+    just run-web-docker mode="{{mode}}" scheduler="{{scheduler}}"
 
-# Quick Docker production start  
-docker-prod profile="": (run-docker-detached "prod" profile)
+# Quick release build - desktop with AppImage
+release-desktop:
+    just build-desktop mode="release"
+    just build-desktop-appimage mode="release"
+    echo "Desktop release complete:"
+    echo "  Binary: build/desktop_release_apscheduler/"
+    echo "  AppImage: build/artifacts/CoinMaker-$(arch).AppImage"
+
+# Quick release build - web docker
+release-web scheduler="celery":
+    just build-web-docker mode="release" scheduler="{{scheduler}}"
+    echo "Web release complete - Docker images built:"
+    echo "  coinmaker:web_release_{{scheduler}}"
+
+# Complete release build - all artifacts
+release-all:
+    just release-desktop
+    just release-web
+    just build-desktop-flatpak mode="release"
+    echo "All release artifacts complete!"
 
 # =============================================================================
-# Workflow Shortcuts
+# Testing Workflows
 # =============================================================================
 
-# Full development workflow: setup, build, and run
-dev: dev-setup run-desktop
+# Quick smoke test
+test-quick browser="chrome":
+    just smoke-test-quick browser="{{browser}}"
 
-# Full production workflow: build and package
-prod: prod-build build-appimage
+# Full test suite
+test-all browser="chrome":
+    just format
+    just lint
+    just typecheck
+    just test
+    just smoke-test-all browser="{{browser}}"
 
-# Full Flatpak workflow: build and export bundle
-flatpak: build-flatpak export-flatpak
-
-# Quick test workflow: format, lint, and test
-ci: format lint test
+# Test specific configuration
+test-config mode="debug" variant="web" scheduler="apscheduler" browser="chrome":
+    just smoke-test mode="{{mode}}" variant="{{variant}}" scheduler="{{scheduler}}" browser="{{browser}}"
 
 # =============================================================================
-# Help and Information
+# CI/CD Workflows
 # =============================================================================
 
-# Show detailed help for all commands
-help:
+# Complete CI workflow
+ci browser="chrome":
+    just format
+    just lint  
+    just typecheck
+    just test
+    just smoke-test-web browser="{{browser}}"
+    just smoke-test-desktop browser="{{browser}}"
+
+# Build all configurations for CI
+ci-build:
+    echo "Building all configurations for CI..."
+    
+    # Desktop configurations
+    just build-desktop mode="debug"
+    just build-desktop mode="release"
+    
+    # Web configurations  
+    just build-web-docker mode="debug" scheduler="apscheduler"
+    just build-web-docker mode="debug" scheduler="celery"
+    just build-web-docker mode="release" scheduler="apscheduler"
+    just build-web-docker mode="release" scheduler="celery"
+    
+    echo "All CI builds complete!"
+
+# Publish all release artifacts
+publish registry="":
     #!/usr/bin/env bash
-    echo "Coin Maker Build System - Modular Just Tasks"
-    echo "============================================="
-    echo ""
-    echo "QUICK START:"
-    echo "  just dev-setup     # Setup development environment"
-    echo "  just run-desktop   # Run desktop app"
-    echo "  just run-docker    # Run with Docker"
-    echo "  just flatpak       # Build and export Flatpak package"
-    echo ""
-    echo "BUILDING:"
-    echo "  just build-frontend [mode]  # Build frontend (dev/prod/desktop)"
-    echo "  just build-desktop [mode]   # Build desktop app"
-    echo "  just build-appimage         # Create Linux AppImage"
-    echo "  just build-flatpak          # Create Flatpak package"
-    echo ""
-    echo "DOCKER:"
-    echo "  just docker-dev [profile]         # Start dev containers (quick)"
-    echo "  just docker-prod [profile]        # Start prod containers (quick)"
-    echo "  just run-docker [mode] [profile]  # Start containers (full control)"
-    echo "  just stop-docker [mode] [profile] # Stop containers"
-    echo "  just docker-logs [mode] [profile] [service]  # View logs"
-    echo "  just restart-docker [mode] [profile] [service]  # Restart services"
-    echo "  just docker-status [mode] [profile]  # Show container status"
-    echo "  just test-docker-config [mode] [profile]  # Test configuration"
-    echo "  just clean-docker              # Clean Docker resources"
-    echo ""
-    echo "   Docker Profiles: celery, apscheduler (default: none)"
-    echo "   Docker Modes: dev, prod (default: dev)"
-    echo ""
-    echo "SMOKE TESTS:"
-    echo "  just smoke-test [browser] [filter]    # Run all smoke tests"
-    echo "  just smoke-test-quick             # Quick test (one config)"
-    echo "  just smoke-test-web [browser]     # Test web configurations"
-    echo "  just smoke-test-docker [browser]  # Test Docker configurations"
-    echo "  just smoke-test-desktop [browser] # Test desktop configurations"
-    echo "  just smoke-test-list              # List available configurations"
-    echo "  just smoke-test-check             # Check requirements"
-    echo "  just smoke-test-install           # Install dependencies"
-    echo ""
-    echo "UTILITIES:"
-    echo "  just clean          # Clean build artifacts"
-    echo "  just format         # Format code"
-    echo "  just lint           # Lint code"
-    echo "  just test           # Run tests"
-    echo "  just check-deps     # Check system dependencies"
-    echo ""
-    echo "DEPENDENCIES:"
-    echo "  just build-hmm      # Build HMM library"
-    echo "  just install-deps   # Install all dependencies"
-    echo ""
-    echo "PACKAGING:"
-    echo "  just create-pyinstaller-spec  # Create PyInstaller spec"
-    echo "  just create-desktop-file      # Create AppImage desktop file"
-    echo "  just install-flatpak          # Install Flatpak locally for testing"
-    echo "  just export-flatpak           # Export Flatpak bundle for distribution"
-    echo ""
-    echo "For detailed command info: just --list"
+    set -e
+    
+    # Docker images
+    just publish-web-docker mode="release" scheduler="apscheduler" registry="{{registry}}"
+    just publish-web-docker mode="release" scheduler="celery" registry="{{registry}}"
+    
+    # Desktop artifacts are built locally - copy to distribution directory
+    mkdir -p dist/
+    if [ -f "build/artifacts/CoinMaker-$(arch).AppImage" ]; then
+        cp build/artifacts/CoinMaker-$(arch).AppImage dist/
+    fi
+    if [ -f "build/artifacts/CoinMaker-$(arch).flatpak" ]; then
+        cp build/artifacts/CoinMaker-$(arch).flatpak dist/
+    fi
+    
+    echo "All artifacts published!"
 
-# Show version information
-version:
-    #!/usr/bin/env bash
-    echo "Coin Maker Build System"
-    echo "======================="
-    
-    # Project version (from package.json)
-    if [ -f "frontend/package.json" ]; then
-        version=$(grep '"version"' frontend/package.json | cut -d'"' -f4)
-        echo "Project Version: $version"
-    fi
-    
-    # Tool versions
-    echo ""
-    echo "Build Tools:"
-    just --version
-    
-    if command -v poetry &> /dev/null; then
-        poetry --version
-    fi
-    
-    if command -v pnpm &> /dev/null; then
-        pnpm --version
-    fi
-    
-    if command -v docker &> /dev/null; then
-        docker --version
-    fi
-    
-    # System info
-    echo ""
-    echo "System: $(uname -s) $(uname -m)"
-    echo "Python: $(python3 --version 2>&1)"
-    
-    if command -v node &> /dev/null; then
-        echo "Node: $(node --version)"
-    fi
+# =============================================================================
+# Information and Help
+# =============================================================================
 
-# Show project structure
+# Show project and build information
 info:
+    just -f build-scripts/utilities-new.just project-info
+
+# Show available build configurations
+configs:
+    just list-configs
+
+# Show smoke test configurations
+test-configs:
+    just smoke-test-list
+
+# Show current build status
+status:
     #!/usr/bin/env bash
-    echo "Project Structure:"
-    echo "=================="
+    echo "Coin Maker Build Status"
+    echo "======================"
     echo ""
-    echo "Project Layout:"
-    tree -L 2 -I 'node_modules|__pycache__|.git|build|dist|temp|logs|external' . || \
-    find . -maxdepth 2 -type d -not -path '*/.*' -not -path '*/node_modules*' -not -path '*/__pycache__*' | sort
+    
+    # Show available builds
+    if [ -d "build" ]; then
+        echo "Available builds:"
+        find build -maxdepth 1 -type d -name "*_*_*" | sort | while read -r dir; do
+            config=$(basename "$dir")
+            echo "  ✓ $config"
+        done
+    else
+        echo "No builds found"
+    fi
+    
+    # Show available artifacts
+    if [ -d "build/artifacts" ] && [ "$(ls -A build/artifacts 2>/dev/null)" ]; then
+        echo ""
+        echo "Available artifacts:"
+        ls -la build/artifacts/ | grep -v "^total" | awk '{print "  " $9 " (" $5 " bytes)"}'
+    fi
+    
+    # Show Docker images
     echo ""
-    echo "Build Scripts:"
-    ls -la build-scripts/
-    echo ""
-    echo "Available Modes: dev, prod, desktop"
-    echo "Current Mode: $MODE (default: dev)"
+    echo "Docker images:"
+    docker images --format "table {{{{.Repository}}}}:{{{{.Tag}}}}\t{{{{.Size}}}}" | grep "coinmaker" || echo "  No coinmaker images found"
+
+# =============================================================================
+# Compatibility Aliases (for migration period)
+# =============================================================================
+
+# Legacy command aliases to ease migration
+alias build-hmm := build-deps
+
+# Legacy workflow aliases
+alias dev := dev-desktop
+alias prod := release-desktop

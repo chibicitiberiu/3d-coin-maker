@@ -8,18 +8,8 @@ the new manual dependency injection system.
 from config.factory import create_web_settings
 from core.service_container import ServiceContainer
 
-
-# Detect deployment mode from environment or running context
-def _detect_mode() -> bool:
-    """Detect if we're running in desktop mode."""
-    # Check if APScheduler is in use (desktop mode indicator)
-    # This is a heuristic - if APScheduler classes are loaded, we're likely in desktop mode
-    import sys
-    return any('apscheduler' in name for name in sys.modules)
-
 # Create a global service container with environment-appropriate settings
 # This maintains compatibility for both web and desktop deployments
-_is_desktop = _detect_mode()
 _container = ServiceContainer(create_web_settings())
 
 
@@ -37,7 +27,7 @@ class CompatibilityContainer:
 
     def settings(self):
         return _container.settings
-    
+
     def inject_desktop_path_resolver(self, path_resolver):
         """Allow desktop module to inject its PathResolver for background tasks."""
         _container._services['path_resolver'] = path_resolver

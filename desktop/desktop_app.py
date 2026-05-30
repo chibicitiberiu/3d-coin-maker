@@ -106,8 +106,8 @@ class DesktopApp(BaseApp):
         
         # Check if frontend build is available - this is critical for desktop mode
         path_resolver = self.services.get_path_resolver()
-        if not path_resolver.is_frontend_build_available():
-            frontend_path = path_resolver.get_frontend_build_dir()
+        if not path_resolver.is_frontend_available:
+            frontend_path = path_resolver.frontend_dir
             error_msg = f"Frontend build not found at: {frontend_path}\n\nPlease run 'make build-frontend' to build the frontend first."
             logger.error(f"Frontend build missing: {frontend_path}")
             
@@ -384,7 +384,7 @@ class DesktopApp(BaseApp):
 
         # Check if frontend is available in the build
         path_resolver = self.services.get_path_resolver() if self.services else None
-        has_frontend = path_resolver and path_resolver.is_frontend_build_available()
+        has_frontend = path_resolver and path_resolver.is_frontend_available
 
         if has_frontend:
             status_text = (
@@ -495,7 +495,7 @@ class DesktopApp(BaseApp):
 
         # Check if frontend is available
         path_resolver = self.services.get_path_resolver() if self.services else None
-        has_frontend = path_resolver and path_resolver.is_frontend_build_available()
+        has_frontend = path_resolver and path_resolver.is_frontend_available
 
         print("\n" + "="*60)
         print("COIN MAKER DESKTOP - CONSOLE MODE")

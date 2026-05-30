@@ -23,8 +23,28 @@ class DesktopServiceContainer:
         """Get path resolver service."""
         if 'path_resolver' not in self._services:
             # Import here to avoid circular imports
+            from pathlib import Path
             from core.services.path_resolver import PathResolver
-            self._services['path_resolver'] = PathResolver(desktop_mode=True, app_data_dir_setting=self.settings.app_data_dir)
+            
+            # For desktop mode, detect install path from current file location
+            install_path = Path(__file__).parent.parent.parent  # Go up to project root
+            
+            # Resolve app_data_dir relative to install path if it's relative
+            app_data_dir = Path(self.settings.app_data_dir)
+            if not app_data_dir.is_absolute():
+                app_data_dir = install_path / app_data_dir
+                
+            # In development mode, frontend might be in build/frontend
+            frontend_path = None
+            dev_frontend = install_path / "build" / "frontend"
+            if dev_frontend.exists():
+                frontend_path = dev_frontend
+                
+            self._services['path_resolver'] = PathResolver(
+                app_data_dir=app_data_dir,
+                install_path=install_path,
+                frontend_path=frontend_path
+            )
         return self._services['path_resolver']
 
     def get_file_storage(self):

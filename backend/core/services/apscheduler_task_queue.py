@@ -200,13 +200,25 @@ class APSchedulerTaskQueue(TaskQueue):
 
             result = task_func(*args, **kwargs)
 
-            # Store successful result
+            # Store successful result, preserving final progress if available
             with self._results_lock:
+                current_result = self._results.get(task_id)
+                final_progress = current_result.progress if current_result else None
+
+                # If we have progress info, ensure it shows 100% completion
+                if final_progress:
+                    final_progress = TaskProgress(
+                        progress=100,
+                        step=final_progress.step or 'completed',
+                        extra_data=final_progress.extra_data
+                    )
+
                 self._results[task_id] = TaskResult(
                     task_id=task_id,
                     status=TaskStatus.SUCCESS,
                     result=result,
-                    retry_count=retry_count
+                    retry_count=retry_count,
+                    progress=final_progress
                 )
 
             logger.info(f"Task {task_name} (ID: {task_id}) completed successfully")
